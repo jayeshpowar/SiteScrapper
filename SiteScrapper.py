@@ -70,17 +70,17 @@ class SiteScrapper:
         """
         Function to print the stats viz: pages with js errors , pages with 404 error , external and internal pages .
         """
-        print("\n\nPages with js error")
-        for url in filter(js_error_filter(), self.visited_web_pages):
-            print(url)
-
-        print("\n\nPages with 404 error")
-        for url in filter(page_not_found_error_filter(), self.visited_web_pages):
-            print(url)
-
-        print("\n\nExternal pages")
-        for url in filter(external_page_filter(), self.visited_web_pages):
-            print(url)
+        # print("\n\nPages with js error")
+        # for url in filter(js_error_filter(), self.visited_web_pages):
+        #     print(url)
+        #
+        # print("\n\nPages with 404 error")
+        # for url in filter(page_not_found_error_filter(), self.visited_web_pages):
+        #     print(url)
+        #
+        # print("\n\nExternal pages")
+        # for url in filter(external_page_filter(), self.visited_web_pages):
+        #     print(url)
 
         print("\n\nInternal pages")
         for url in filter(internal_page_filter(), self.visited_web_pages):

@@ -4,7 +4,7 @@ pip install -r requirements.txt
 
 Start scrapping  by executing
 ===================================
-python SiteScrapper.py 'http://www.example.com'
+python Scrapper.py 'http://www.example.com'
 
 Limitations
 ============
