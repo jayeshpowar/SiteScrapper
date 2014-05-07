@@ -9,4 +9,5 @@ python Scrapper.py 'http://www.example.com'
 Limitations
 ============
 1.Currently the utility doesn't scrape the pages obtained after loggging in .
+
 2.Handling localhost based urls might require some tweaking .
