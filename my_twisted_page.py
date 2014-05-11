@@ -38,7 +38,7 @@ class WebClientContextFactory(ClientContextFactory):
 class MyTwistedPage:
     def __init__(self, url, parent, base_site, base_domain):
         self.url = '' if url is None else url
-        self.url = url[:-1] if url.endswith('/') else self.url
+        # self.url = url[:-1] if url.endswith('/') else self.url
         self.base_domain = base_domain
         self.response_code = -1
         self.external_url = self.base_domain not in extract_domain(self.url)
@@ -70,37 +70,41 @@ class MyTwistedPage:
         parsed = urlparse.urlparse(self.url)
         path = parsed.path
 
-        # link = urljoin(self.url, href_value, False)
-        # link = link if 'javascript:void' not in href_value and not href_value.startswith('mailto') else None
-        if href_value.startswith('/'):
-            link = "{}{}".format(self.base_site, href_value)
-        elif href_value.startswith('#'):
+        if href_value.startswith('#'):
             link = self.url
-        elif href_value.startswith('../'):
-            temp_path = path[:path.rfind('/')]
-            new_path = temp_path[:temp_path.rfind('/')] + '/' \
-                       + href_value.replace("../", "")
-            if parsed.query != '':
-                new_path = new_path + "?" + parsed.query
-            link = "{}://{}{}".format(parsed.scheme, parsed.netloc, new_path)
-            # link = "{}/{}".format(self.url, href_value.replace("../", ""))
-        elif not href_value.startswith('http') \
-                and 'javascript:void' not in href_value \
-                and not href_value.startswith('mailto'):
-            path = parsed.path
-            if path.endswith('/'):
-                new_path = path[:path.rfind('/')] + '/' + href_value
-            elif not path.endswith('/') and path.endswith('.html'):
-                new_path = path[:path.rfind('/')] + '/' + href_value
-            else:
-                new_path = path + '/' + href_value
-            if parsed.query != '':
-                new_path = new_path + "?" + parsed.query
-            link = "{}://{}{}".format(parsed.scheme, parsed.netloc, new_path)
-            # link = "{}/{}".format(self.base_site, href_value)
         else:
-            link = href_value if 'javascript:void' not in href_value and not href_value.startswith(
+            link = urlparse.urljoin(self.url, href_value, allow_fragments=False)
+            link = link if 'javascript:void' not in href_value and not href_value.startswith(
                 'mailto') else None
+        # if href_value.startswith('/'):
+        #     link = "{}{}".format(self.base_site, href_value)
+        # elif href_value.startswith('#'):
+        #     link = self.url
+        # elif href_value.startswith('../'):
+        #     temp_path = path[:path.rfind('/')]
+        #     new_path = temp_path[:temp_path.rfind('/')] + '/' \
+        #                + href_value.replace("../", "")
+        #     if parsed.query != '':
+        #         new_path = new_path + "?" + parsed.query
+        #     link = "{}://{}{}".format(parsed.scheme, parsed.netloc, new_path)
+        #     # link = "{}/{}".format(self.url, href_value.replace("../", ""))
+        # elif not href_value.startswith('http') \
+        #         and 'javascript:void' not in href_value \
+        #         and not href_value.startswith('mailto'):
+        #     path = parsed.path
+        #     if path.endswith('/'):
+        #         new_path = path[:path.rfind('/')] + '/' + href_value
+        #     elif not path.endswith('/') and path.endswith('.html'):
+        #         new_path = path[:path.rfind('/')] + '/' + href_value
+        #     else:
+        #         new_path = path + '/' + href_value
+        #     if parsed.query != '':
+        #         new_path = new_path + "?" + parsed.query
+        #     link = "{}://{}{}".format(parsed.scheme, parsed.netloc, new_path)
+        #     # link = "{}/{}".format(self.base_site, href_value)
+        # else:
+        #     link = href_value if 'javascript:void' not in href_value and not href_value.startswith(
+        #         'mailto') else None
 
         return link
 

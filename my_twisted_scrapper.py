@@ -14,32 +14,6 @@ from my_twisted_page import extract_domain, extract_base_site, MyTwistedPage
 __author__ = 'jayesh'
 
 
-def js_error_filter():
-    """
-    Filter function to filter out only pages with javascript errors .
-    """
-    return lambda wp: len(wp.errors) > 0
-
-
-def page_not_found_error_filter():
-    """
-    Filter function to filter out only pages with 404 response code.
-    """
-    return lambda wp: wp.response_code == 404
-
-
-def external_page_filter():
-    """
-    Filter function to filter out only pages from a different domain than the starting domain  .
-    """
-    return lambda wp: wp.external_url
-
-
-def internal_page_filter():
-    """
-    Filter function to filter out only pages within the base domain .
-    """
-    return lambda wp: not wp.external_url
 
 
 class MyTwistedScrapper:
@@ -115,21 +89,33 @@ class MyTwistedScrapper:
         Function to print the stats viz: pages with js errors , pages with 404 error , external and internal pages .
         """
         print("\n\nPages with js error")
-        for url in filter((lambda wp: len(wp.errors) > 0), self.visited_urls):
+        pages_with_js_errors = filter((lambda wp: len(wp.errors) > 0),
+                                      self.visited_urls)
+        for url in pages_with_js_errors:
             print(url)
 
         print("\n\nPages with 404 error")
-        for url in filter((lambda wp: wp.response_code == 404),
-                          self.visited_urls):
+        pages_with_404_errors = filter((lambda wp: wp.response_code == 404),
+                                       self.visited_urls)
+        for url in pages_with_404_errors:
             print(url)
 
         print("\n\nExternal pages")
-        for url in filter((lambda wp: wp.external_url), self.visited_urls):
+        external_pages = filter((lambda wp: wp.external_url), self.visited_urls)
+        for url in external_pages:
             print(url)
 
         print("\n\nInternal pages")
-        for url in filter((lambda wp: not wp.external_url), self.visited_urls):
+        intenal_pages = filter((lambda wp: not wp.external_url),
+                               self.visited_urls)
+        for url in intenal_pages:
             print(url)
+
+        print("\nPages with JS errors : {}\nPages with 404 errors : {}\n"
+              "External Pages : {} \nInternal Pages : {}"
+              .format(len(pages_with_js_errors), len(pages_with_404_errors),
+                      len(external_pages),
+                      len(intenal_pages)))
 
 
 def main(args):
@@ -148,7 +134,7 @@ if __name__ == "__main__":
     # base_url = 'http://modsnake.sf.net'
     # base_url = 'https://sourceforge.net/p/irefindex/drugbank'
     # base_url = 'http://www.boddie.org.uk/david/Projects/Python/index.html'
-    # base_url = 'http://www.appdynamics.com/'
+    base_url = 'http://www.appdynamics.com/'
     main(base_url)
     # main(sys.argv[1:])
 
