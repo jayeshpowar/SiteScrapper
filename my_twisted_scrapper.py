@@ -23,6 +23,8 @@ MAX_CONCURRENT_REQUESTS = config.getint('scrapper-params',
                                         'MAX_CONCURRENT_REQUESTS_PER_SERVER')
 IDLE_PING_COUNT = config.getint('scrapper-params', 'IDLE_PING_COUNT')
 PAGE_TIMEOUT = config.getint('page-params', 'PAGE_TIMEOUT')
+DOMAINS_TO_BE_SKIPPED = config.get('scrapper-params',
+                                   'DOMAINS_TO_BE_SKIPPED').split(',')
 
 
 class MyTwistedScrapper:
@@ -33,7 +35,8 @@ class MyTwistedScrapper:
         self.base_domain = extract_domain(base_url)
         self.base_site = extract_base_site(base_url)
         self.non_visited_urls = set(
-            [MyTwistedPage(base_url, None, base_url, self.base_domain)])
+            [MyTwistedPage(base_url, None, base_url, self.base_domain,
+                           DOMAINS_TO_BE_SKIPPED)])
         self.added_count = 1
         self.idle_ping = 1
 
@@ -87,27 +90,6 @@ class MyTwistedScrapper:
         if self.idle_ping > IDLE_PING_COUNT > len(self.intermediate_urls):
             self.wrap_up()
 
-    def crawl1(self):
-        logger.debug("Called {}".format('crawl'))
-
-        print("Yet to visit {} with {} intermediate urls ".format(
-            self.added_count - len(self.visited_urls),
-            len(self.intermediate_urls)))
-
-        while len(self.non_visited_urls) > 0:
-            web_page = self.non_visited_urls.pop()
-            self.intermediate_urls.add(web_page)
-            d = web_page.process()
-            d.addCallback(self.process_web_page, web_page)
-
-        self.idle_ping += 1
-
-        print("Total added {} and visited {} ".format(self.added_count,
-                                                      len(self.visited_urls)))
-
-        if self.idle_ping > 10 > len(self.intermediate_urls):
-            self.wrap_up()
-
     def wrap_up(self):
         print("Total  visited  links {} ".format(len(self.visited_urls)))
         self.print_stats()
@@ -121,7 +103,8 @@ class MyTwistedScrapper:
 
     def print_stats(self):
         """
-        Function to print the stats viz: pages with js errors , pages with 404 error , external and internal pages .
+        Function to print the stats viz: pages with js errors , pages with 404
+        error , external and internal pages .
         """
         print("\n\nPages with js error")
         pages_with_js_errors = filter((lambda wp: len(wp.errors) > 0),
@@ -159,7 +142,8 @@ class MyTwistedScrapper:
             print(url)
 
         print(
-            "\nTotal pages visited : {}\nPages with JS errors : {}\nPages with 404 errors : {}\n"
+            "\nTotal pages visited : {}\nPages with JS errors : {}"
+            "\nPages with 404 errors : {}\n"
             "External Pages : {} \nInternal Pages : {}"
             "\nExternal Pages with 404: {} \nInternal Pages  with 404: {}"
             .format(len(self.visited_urls),

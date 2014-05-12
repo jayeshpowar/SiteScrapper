@@ -16,8 +16,6 @@ from tldextract import extract
 logging.basicConfig(filemode='w', filename='page.log', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-__author__ = 'jayesh'
-
 
 def extract_base_site(url):
     extracted = extract(url)
@@ -42,7 +40,7 @@ class WebClientContextFactory(ClientContextFactory):
 
 
 class MyTwistedPage:
-    def __init__(self, url, parent, base_site, base_domain):
+    def __init__(self, url, parent, base_site, base_domain, domains_to_skip):
         self.url = '' if url is None else url
         self.base_domain = base_domain
         self.response_code = -1
@@ -53,6 +51,7 @@ class MyTwistedPage:
         self.parent = parent
         self.base_site = base_site
         self.content_type = "text/html"
+        self.domains_to_skip = domains_to_skip
 
     def process_head_response(self, response):
         logger.debug(
@@ -98,13 +97,18 @@ class MyTwistedPage:
                     link = self.format_link(href_value)
                 else:
                     continue
-
                 if link is not None:
-                    link_page = MyTwistedPage(link, self, self.base_site,
-                                              self.base_domain)
-                    self.links.add(link_page)
-                    link_page.parent = self
-                    link_count += 1
+                    link_info = extract(link)
+                    parsed_link = "{}.{}.{}".format(link_info.subdomain,
+                                                    link_info.domain,
+                                                    link_info.suffix)
+                    if parsed_link not in self.domains_to_skip:
+                        link_page = MyTwistedPage(link, self, self.base_site,
+                                                  self.base_domain,
+                                                  self.domains_to_skip)
+                        self.links.add(link_page)
+                        link_page.parent = self
+                        link_count += 1
 
     def process_get_failure(self, response):
         logger.info("Called {} for {} with {} ".format('process_get_failure',
@@ -192,11 +196,3 @@ class MyTwistedPage:
             .format(self.url, self.response_code,
                     self.parent.url if self.parent is not None else '',
                     self.external_url, self.visited, self.errors)
-
-
-if __name__ == "__main__":
-    base_url = 'http://www.neevtech.com'
-    base_url = 'http://www.slideshare.net/neevtech/nodejs-neev'
-    page = MyTwistedPage(base_url, None, base_url, extract_domain(base_url))
-    main_deferred = page.make_head_request()
-    reactor.run()
