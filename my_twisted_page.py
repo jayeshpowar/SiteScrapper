@@ -1,14 +1,20 @@
 import urlparse
+import logging
 
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.support.wait import WebDriverWait
 from twisted.internet import reactor
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, maybeDeferred, succeed
 from twisted.internet.ssl import ClientContextFactory
 from twisted.python import log
 from twisted.web.client import Agent, getPage, WebClientContextFactory, \
     RedirectAgent
 from tldextract import extract
 
+
+logging.basicConfig(filemode='w', filename='page.log', level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 __author__ = 'jayesh'
 
@@ -38,7 +44,6 @@ class WebClientContextFactory(ClientContextFactory):
 class MyTwistedPage:
     def __init__(self, url, parent, base_site, base_domain):
         self.url = '' if url is None else url
-        # self.url = url[:-1] if url.endswith('/') else self.url
         self.base_domain = base_domain
         self.response_code = -1
         self.external_url = self.base_domain not in extract_domain(self.url)
@@ -50,7 +55,8 @@ class MyTwistedPage:
         self.content_type = "text/html"
 
     def process_head_response(self, response):
-        # print("Called {} for {} ".format('process_head_response',self.url))
+        logger.debug(
+            "Called {} for {} ".format('process_head_response', self.url))
         self.response_code = response.code
         self.content_type = "".join(
             response.headers.getRawHeaders('Content-Type', ''))
@@ -61,55 +67,24 @@ class MyTwistedPage:
 
 
     def process_head_failure(self, failure):
-        # print("Called {} for {} due to {} ".format('process_head_failure', self.url, failure.value))
-        # self.response_code = -1
+        logger.info("Called {} for {} due to {} ".format('process_head_failure',
+                                                         self.url,
+                                                         failure.value))
         self.content_type = 'UNKNOWN'
         raise Exception(failure.value)
 
     def format_link(self, href_value):
-        parsed = urlparse.urlparse(self.url)
-        path = parsed.path
-
         if href_value.startswith('#'):
             link = self.url
         else:
             link = urlparse.urljoin(self.url, href_value, allow_fragments=False)
-            link = link if 'javascript:void' not in href_value and not href_value.startswith(
-                'mailto') else None
-        # if href_value.startswith('/'):
-        #     link = "{}{}".format(self.base_site, href_value)
-        # elif href_value.startswith('#'):
-        #     link = self.url
-        # elif href_value.startswith('../'):
-        #     temp_path = path[:path.rfind('/')]
-        #     new_path = temp_path[:temp_path.rfind('/')] + '/' \
-        #                + href_value.replace("../", "")
-        #     if parsed.query != '':
-        #         new_path = new_path + "?" + parsed.query
-        #     link = "{}://{}{}".format(parsed.scheme, parsed.netloc, new_path)
-        #     # link = "{}/{}".format(self.url, href_value.replace("../", ""))
-        # elif not href_value.startswith('http') \
-        #         and 'javascript:void' not in href_value \
-        #         and not href_value.startswith('mailto'):
-        #     path = parsed.path
-        #     if path.endswith('/'):
-        #         new_path = path[:path.rfind('/')] + '/' + href_value
-        #     elif not path.endswith('/') and path.endswith('.html'):
-        #         new_path = path[:path.rfind('/')] + '/' + href_value
-        #     else:
-        #         new_path = path + '/' + href_value
-        #     if parsed.query != '':
-        #         new_path = new_path + "?" + parsed.query
-        #     link = "{}://{}{}".format(parsed.scheme, parsed.netloc, new_path)
-        #     # link = "{}/{}".format(self.base_site, href_value)
-        # else:
-        #     link = href_value if 'javascript:void' not in href_value and not href_value.startswith(
-        #         'mailto') else None
-
+            link = link if 'javascript:void' not in href_value \
+                and not href_value.startswith('mailto') else None
         return link
 
     def process_get_response(self, response):
-        # print("Called {} for {} ".format('process_get_response', self.url))
+        logger.debug(
+            "Called {} for {} ".format('process_get_response', self.url))
         if not self.external_url:
             html_source = response
             soup = BeautifulSoup(html_source)
@@ -132,14 +107,13 @@ class MyTwistedPage:
                     link_count += 1
 
     def process_get_failure(self, response):
-        print(
-            "Called {} for {} with {} ".format('process_get_failure', self.url,
-                                               response.value))
-        # self.response_code = -1
+        logger.info("Called {} for {} with {} ".format('process_get_failure',
+                                                       self.url,
+                                                       response.value))
         self.content_type = 'UNKNOWN'
 
     def make_head_request(self):
-        # print("Called {} for {}".format('make_head_request', self.url))
+        logger.debug("Called {} for {}".format('make_head_request', self.url))
         agent = RedirectAgent(Agent(reactor))
         if 'https' in self.url:
             contextFactory = WebClientContextFactory()
@@ -150,7 +124,7 @@ class MyTwistedPage:
         return deferred
 
     def make_get_request(self, status):
-        # print("Called {} for {}  ".format('make_get_request', self.url))
+        logger.debug("Called {} for {}  ".format('make_get_request', self.url))
         d = Deferred()
         if 'text/html' in self.content_type and not self.external_url:
             d = getPage(bytes(self.url), timeout=30)
@@ -159,7 +133,7 @@ class MyTwistedPage:
         return d
 
     def process(self):
-        # print("Called {}".format('process'))
+        logger.debug("Called {}".format('process'))
         deferred = self.make_head_request()
         deferred.addCallback(self.process_head_response)
         deferred.addErrback(self.process_head_failure)
@@ -169,12 +143,44 @@ class MyTwistedPage:
         deferred.addErrback(log.err)
         return deferred
 
+    def obtain_driver(self):
+        browser_profile = webdriver.FirefoxProfile()
+        browser_profile.add_extension('JSErrorCollector.xpi')
+        driver = webdriver.Firefox(firefox_profile=browser_profile)
+
+        return succeed(driver)
+
+    def browse_page(self):
+        d = maybeDeferred(self.obtain_driver)
+        d.addCallback(self.identify_javascript_errors)
+        return d
+
+    def identify_javascript_errors(self, driver):
+        driver.get(self.url)
+        WebDriverWait(driver, 20).until(lambda d: d.execute_script(
+            'return document.readyState') == 'complete')
+        try:
+            error_messages = driver.execute_script(
+                bytes("return window.JSErrorCollector_errors.pump()"))
+            self.errors = list(map(lambda x: x['errorMessage'], error_messages))
+        except Exception as e:
+            logger.error("Encountered error while collecting data from "
+                         "jscollector plugin , defaulting to the basic "
+                         "mechanism for error collection")
+            log_messages = (driver.get_log('browser'))
+            for error_entry in log_messages:
+                if "Error" in error_entry["message"] and "SEVERE" in \
+                        error_entry[
+                            'level']:
+                    self.errors.append(error_entry)
+        driver.quit()
+
     def __hash__(self):
         return hash(self.url)
 
     def __eq__(self, other):
-        return self.url.replace("https", 'http') == other.url.replace("https",
-                                                                      'http')
+        return self.url.replace("https", 'http') == \
+               other.url.replace("https", 'http')
 
     def __str__(self):
         return "Url: {}," \
@@ -193,8 +199,4 @@ if __name__ == "__main__":
     base_url = 'http://www.slideshare.net/neevtech/nodejs-neev'
     page = MyTwistedPage(base_url, None, base_url, extract_domain(base_url))
     main_deferred = page.make_head_request()
-    # main_deferred.addErrback(log.err)
-
-
     reactor.run()
-    # main(sys.argv[1:])

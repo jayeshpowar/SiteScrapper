@@ -1,26 +1,34 @@
-import logging
+import ConfigParser
 from threading import Lock
+import sys
 
-from twisted.internet import pollreactor, task
+from twisted.internet import task
+from twisted.internet.defer import DeferredList
 
 
-pollreactor.install()
-
+# pollreactor.install()
 from twisted.internet import reactor
-
 from my_twisted_page import extract_domain, extract_base_site, MyTwistedPage
+import logging
 
+logging.basicConfig(filemode='w', level=logging.INFO)
+handler = logging.FileHandler('scrapper.log')
+logger = logging.getLogger(__name__)
+logger.addHandler(handler)
 
-__author__ = 'jayesh'
-
-
+START_URL = ''
+config = ConfigParser.RawConfigParser()
+config.readfp(open(r'config.ini'))
+MAX_CONCURRENT_REQUESTS = config.getint('scrapper-params',
+                                        'MAX_CONCURRENT_REQUESTS_PER_SERVER')
+IDLE_PING_COUNT = config.getint('scrapper-params', 'IDLE_PING_COUNT')
+PAGE_TIMEOUT = config.getint('page-params', 'PAGE_TIMEOUT')
 
 
 class MyTwistedScrapper:
     def __init__(self, base_url):
         self.visited_urls = set()
         self.intermediate_urls = set()
-        logging.basicConfig(filename='myapp.log', level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)
         self.base_domain = extract_domain(base_url)
         self.base_site = extract_base_site(base_url)
@@ -34,55 +42,82 @@ class MyTwistedScrapper:
                    and page not in self.non_visited_urls \
             and page not in self.intermediate_urls
 
-
     def get_unique_non_visited_links(self, page):
         l = Lock()
         l.acquire()
         filtered_links = set(filter(self.filter_visited_links, page.links))
         l.release()
-        # self.logger.debug("Adding {}  for {}".format(len(filtered_links),
-        #                                              page.url))
         return filtered_links
 
-    # Make sure this gets called for failed pages as well
     def process_web_page(self, resp, web_page):
-        # print("Called {} for {}".format('process_web_page', web_page.url))
+        logger.debug(
+            "Called {} for {}".format('process_web_page', web_page.url))
         self.visited_urls.add(web_page)
         self.intermediate_urls.discard(web_page)
         unique_links = self.get_unique_non_visited_links(web_page)
-        # print("Adding {} links for {}".format(len(unique_links), web_page.url))
         self.non_visited_urls = self.non_visited_urls.union(unique_links)
         self.added_count += len(unique_links)
 
+    def trial_fetch(self):
+
+        while len(self.non_visited_urls) > 0:
+            web_page = self.non_visited_urls.pop()
+            self.intermediate_urls.add(web_page)
+            d = web_page.process()
+            d.addCallback(self.process_web_page, web_page)
+            yield d
+
     def crawl(self):
-        # print("Called {}".format('crawl'))
+        logger.debug("Called {}".format('crawl'))
 
         print("Yet to visit {} with {} intermediate urls ".format(
             self.added_count - len(self.visited_urls),
             len(self.intermediate_urls)))
 
-        if self.idle_ping == -1:
-            for url in self.intermediate_urls:
-                print(url.url)
+        deferred = []
+        coop = task.Cooperator()
+        work = self.trial_fetch()
+        for i in xrange(MAX_CONCURRENT_REQUESTS):
+            coop_deferred = coop.coiterate(work)
+            deferred.append(coop_deferred)
+        dl = DeferredList(deferred)
+        self.idle_ping += 1
+        print("Total added {} and visited {} "
+              .format(self.added_count, len(self.visited_urls)))
+        if self.idle_ping > IDLE_PING_COUNT > len(self.intermediate_urls):
+            self.wrap_up()
+
+    def crawl1(self):
+        logger.debug("Called {}".format('crawl'))
+
+        print("Yet to visit {} with {} intermediate urls ".format(
+            self.added_count - len(self.visited_urls),
+            len(self.intermediate_urls)))
+
         while len(self.non_visited_urls) > 0:
-            # counter = 500
-            # while len(self.non_visited_urls) > 0 and counter > 0:
             web_page = self.non_visited_urls.pop()
             self.intermediate_urls.add(web_page)
             d = web_page.process()
             d.addCallback(self.process_web_page, web_page)
-            # counter -= 1
 
         self.idle_ping += 1
 
         print("Total added {} and visited {} ".format(self.added_count,
                                                       len(self.visited_urls)))
 
-        if self.idle_ping > 10 \
-                and len(self.intermediate_urls) < 10:
-            print("Total  visited  links {} ".format(len(self.visited_urls)))
-            self.print_stats()
-            reactor.stop()
+        if self.idle_ping > 10 > len(self.intermediate_urls):
+            self.wrap_up()
+
+    def wrap_up(self):
+        print("Total  visited  links {} ".format(len(self.visited_urls)))
+        self.print_stats()
+        for page in filter((lambda x: not x.external_url
+        and 'text/html' in x.content_type
+        and x.response_code != 404), self.visited_urls):
+            page.browse_page()
+        self.print_stats()
+        reactor.stop()
+
 
     def print_stats(self):
         """
@@ -105,37 +140,45 @@ class MyTwistedScrapper:
         for url in external_pages:
             print(url)
 
+        print("\n\nExternal pages with 404 errors")
+        external_404_pages = filter((lambda wp: wp.external_url
+        and wp.response_code == 404), self.visited_urls)
+        for url in external_404_pages:
+            print(url)
+
         print("\n\nInternal pages")
         intenal_pages = filter((lambda wp: not wp.external_url),
                                self.visited_urls)
         for url in intenal_pages:
             print(url)
 
-        print("\nPages with JS errors : {}\nPages with 404 errors : {}\n"
-              "External Pages : {} \nInternal Pages : {}"
-              .format(len(pages_with_js_errors), len(pages_with_404_errors),
-                      len(external_pages),
-                      len(intenal_pages)))
+        print("\n\nInternal pages with 404 errors")
+        internal_404_pages = filter((lambda wp: not wp.external_url
+        and wp.response_code == 404), self.visited_urls)
+        for url in internal_404_pages:
+            print(url)
+
+        print(
+            "\nTotal pages visited : {}\nPages with JS errors : {}\nPages with 404 errors : {}\n"
+            "External Pages : {} \nInternal Pages : {}"
+            "\nExternal Pages with 404: {} \nInternal Pages  with 404: {}"
+            .format(len(self.visited_urls),
+                    len(pages_with_js_errors), len(pages_with_404_errors),
+                    len(external_pages), len(intenal_pages),
+                    len(external_404_pages), len(internal_404_pages)))
 
 
-def main(args):
-    base_url = args
-    scrapper = MyTwistedScrapper(base_url)
-
+def main(start_url):
+    scrapper = MyTwistedScrapper(start_url)
     l = task.LoopingCall(scrapper.crawl)
     l.start(2.0)
     reactor.run()
 
 
 if __name__ == "__main__":
-    # base_url = 'http://www.neevtech.com'
-    base_url = 'http://www.boddie.org.uk'
-    # base_url = 'http://www.boddie.org.uk/david/Projects/Python/KDE/Software/kparts-2005-09-19.tar.gz'
-    # base_url = 'http://modsnake.sf.net'
-    # base_url = 'https://sourceforge.net/p/irefindex/drugbank'
-    # base_url = 'http://www.boddie.org.uk/david/Projects/Python/index.html'
-    base_url = 'http://www.appdynamics.com/'
-    main(base_url)
-    # main(sys.argv[1:])
+    START_URL = sys.argv[1] if len(sys.argv) == 2 \
+        else config.get('scrapper-params', 'START_URL')
+
+    main(START_URL)
 
 
