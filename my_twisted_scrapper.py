@@ -6,6 +6,7 @@ from twisted.internet import task
 from twisted.internet.defer import DeferredList
 
 
+
 # pollreactor.install()
 from twisted.internet import reactor
 from my_twisted_page import extract_domain, extract_base_site, MyTwistedPage
@@ -93,11 +94,11 @@ class MyTwistedScrapper:
     def wrap_up(self):
         print("Total  visited  links {} ".format(len(self.visited_urls)))
         self.print_stats()
-        for page in filter((lambda x: not x.external_url
-        and 'text/html' in x.content_type
-        and x.response_code != 404), self.visited_urls):
-            page.browse_page()
-        self.print_stats()
+        # for page in filter((lambda x: not x.external_url
+        # and 'text/html' in x.content_type
+        # and x.response_code != 404), self.visited_urls):
+        #     page.browse_page()
+        # self.print_stats()
         reactor.stop()
 
 

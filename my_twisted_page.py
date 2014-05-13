@@ -9,7 +9,7 @@ from twisted.internet.defer import Deferred, maybeDeferred, succeed
 from twisted.internet.ssl import ClientContextFactory
 from twisted.python import log
 from twisted.web.client import Agent, getPage, WebClientContextFactory, \
-    RedirectAgent
+    BrowserLikeRedirectAgent
 from tldextract import extract
 
 
@@ -118,10 +118,11 @@ class MyTwistedPage:
 
     def make_head_request(self):
         logger.debug("Called {} for {}".format('make_head_request', self.url))
-        agent = RedirectAgent(Agent(reactor))
+        # agent = RedirectAgent(Agent(reactor))
+        agent = BrowserLikeRedirectAgent(Agent(reactor))
         if 'https' in self.url:
             contextFactory = WebClientContextFactory()
-            agent = RedirectAgent(Agent(reactor, contextFactory))
+            agent = BrowserLikeRedirectAgent(Agent(reactor, contextFactory))
 
         deferred = agent.request('HEAD', bytes(self.url))
 
