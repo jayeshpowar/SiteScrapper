@@ -1,9 +1,9 @@
 import urlparse
 import logging
+import subprocess
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
-from selenium.webdriver.support.wait import WebDriverWait
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, maybeDeferred, succeed
 from twisted.internet.ssl import ClientContextFactory
@@ -161,7 +161,11 @@ class MyTwistedPage:
         return d
 
     def identify_javascript_errors(self, driver):
-        driver.get(self.url)
+        result = subprocess.check_output(
+            ["phantomjs", "visitor.js", self.url]).split('\n')
+        self.errors = result
+
+        """driver.get(self.url)
         WebDriverWait(driver, 20).until(lambda d: d.execute_script(
             'return document.readyState') == 'complete')
         try:
@@ -178,7 +182,7 @@ class MyTwistedPage:
                         error_entry[
                             'level']:
                     self.errors.append(error_entry)
-        driver.quit()
+        driver.quit()"""
 
     def __hash__(self):
         return hash(self.url)

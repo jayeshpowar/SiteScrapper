@@ -1,10 +1,13 @@
 Install the dependencies using
 ===================================
-pip install -r requirements.txt
+**pip install -r requirements.txt**
 
+1. Before installing requirements make sure your system has libffi-dev and
+libssl-dev libraries installed , required for the https support .
 
-Before installing requirements make sure your system has libffi-dev and
-libssl-dev libraries installed , required by the https support .
+2.Phantomjs 1.9.7 is installed .
+
+3.Python 2.7.6 .
 
 Start scrapping  by executing
 ===================================
@@ -51,3 +54,5 @@ Limitations
 1.Currently the utility doesn't scrape the pages obtained after loggging in .
 
 2.Handling localhost based urls might require some tweaking .
+
+3.Currently only python 2.7.6 is supported .

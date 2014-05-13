@@ -7,6 +7,7 @@ from twisted.internet.defer import DeferredList
 
 
 
+
 # pollreactor.install()
 from twisted.internet import reactor
 from my_twisted_page import extract_domain, extract_base_site, MyTwistedPage
@@ -74,9 +75,9 @@ class MyTwistedScrapper:
     def crawl(self):
         logger.debug("Called {}".format('crawl'))
 
-        print("Yet to visit {} with {} intermediate urls ".format(
-            self.added_count - len(self.visited_urls),
-            len(self.intermediate_urls)))
+        print("Yet to visit {} urls with {} urls currently being processed "
+              .format(self.added_count - len(self.visited_urls),
+                      len(self.intermediate_urls)))
 
         deferred = []
         coop = task.Cooperator()
@@ -86,7 +87,7 @@ class MyTwistedScrapper:
             deferred.append(coop_deferred)
         dl = DeferredList(deferred)
         self.idle_ping += 1
-        print("Total added {} and visited {} "
+        print("Total added {} urls and visited {} urls "
               .format(self.added_count, len(self.visited_urls)))
         if self.idle_ping > IDLE_PING_COUNT > len(self.intermediate_urls):
             self.wrap_up()
