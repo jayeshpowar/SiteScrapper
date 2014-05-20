@@ -8,6 +8,8 @@ from twisted.internet.defer import DeferredList
 
 
 
+
+
 # pollreactor.install()
 from twisted.internet import reactor
 from my_twisted_page import extract_domain, extract_base_site, MyTwistedPage
@@ -108,49 +110,55 @@ class MyTwistedScrapper:
         Function to print the stats viz: pages with js errors , pages with 404
         error , external and internal pages .
         """
-        print("\n\nPages with js error")
-        pages_with_js_errors = filter((lambda wp: len(wp.errors) > 0),
-                                      self.visited_urls)
-        for url in pages_with_js_errors:
-            print(url)
+        # print("\n\nPages with js error")
+        # pages_with_js_errors = sorted(filter((lambda wp: len(wp.errors) > 0),
+        #                               self.visited_urls))
+        # for url in pages_with_js_errors:
+        #     print(url)
 
-        print("\n\nPages with 404 error")
-        pages_with_404_errors = filter((lambda wp: wp.response_code == 404),
-                                       self.visited_urls)
-        for url in pages_with_404_errors:
-            print(url)
+        # print("\n\nPages with 404 error")
+        # pages_with_404_errors = sorted(filter((lambda wp: wp.response_code == 404),
+        #                                self.visited_urls))
+        # for url in pages_with_404_errors:
+        #     print(url)
 
-        print("\n\nExternal pages")
-        external_pages = filter((lambda wp: wp.external_url), self.visited_urls)
-        for url in external_pages:
-            print(url)
+        # print("\n\nExternal pages")
+        # external_pages = sorted(filter((lambda wp: wp.external_url), self.visited_urls))
+        # for url in external_pages:
+        #     print(url)
 
         print("\n\nExternal pages with 404 errors")
-        external_404_pages = filter((lambda wp: wp.external_url
-        and wp.response_code == 404), self.visited_urls)
+        external_404_pages = sorted(filter((lambda wp: wp.external_url
+        and wp.response_code == 404), self.visited_urls))
         for url in external_404_pages:
             print(url)
 
-        print("\n\nInternal pages")
-        intenal_pages = filter((lambda wp: not wp.external_url),
-                               self.visited_urls)
-        for url in intenal_pages:
-            print(url)
+        # print("\n\nInternal pages")
+        # intenal_pages = sorted(filter((lambda wp: not wp.external_url),
+        #                        self.visited_urls))
+        # for url in intenal_pages:
+        #     print(url)
 
         print("\n\nInternal pages with 404 errors")
-        internal_404_pages = filter((lambda wp: not wp.external_url
-        and wp.response_code == 404), self.visited_urls)
+        internal_404_pages = sorted(filter((lambda wp: not wp.external_url
+        and wp.response_code == 404), self.visited_urls))
         for url in internal_404_pages:
             print(url)
 
+            # print(
+            #     "\nTotal pages visited : {}\nPages with JS errors : {}"
+            #     "\nPages with 404 errors : {}\n"
+            #     "External Pages : {} \nInternal Pages : {}"
+            #     "\nExternal Pages with 404: {} \nInternal Pages  with 404: {}"
+            #     .format(len(self.visited_urls),
+            #             len(pages_with_js_errors), len(pages_with_404_errors),
+            #             len(external_pages), len(intenal_pages),
+            #             len(external_404_pages), len(internal_404_pages)))
+
         print(
-            "\nTotal pages visited : {}\nPages with JS errors : {}"
-            "\nPages with 404 errors : {}\n"
-            "External Pages : {} \nInternal Pages : {}"
+            "\nTotal pages visited : {}\n"
             "\nExternal Pages with 404: {} \nInternal Pages  with 404: {}"
             .format(len(self.visited_urls),
-                    len(pages_with_js_errors), len(pages_with_404_errors),
-                    len(external_pages), len(intenal_pages),
                     len(external_404_pages), len(internal_404_pages)))
 
 
@@ -159,7 +167,6 @@ def main(start_url):
     l = task.LoopingCall(scrapper.crawl)
     l.start(2.0)
     reactor.run()
-
 
 if __name__ == "__main__":
     START_URL = sys.argv[1] if len(sys.argv) == 2 \
