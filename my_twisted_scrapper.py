@@ -10,6 +10,9 @@ from twisted.internet.defer import DeferredList
 
 
 
+
+
+
 # pollreactor.install()
 from twisted.internet import reactor
 from my_twisted_page import extract_domain, extract_base_site, MyTwistedPage
@@ -130,8 +133,16 @@ class MyTwistedScrapper:
         print("\n\nExternal pages with 404 errors")
         external_404_pages = sorted(filter((lambda wp: wp.external_url
         and wp.response_code == 404), self.visited_urls))
-        for url in external_404_pages:
-            print(url)
+
+        external_404_pages.sort(key=lambda x: x.parent)
+        parent_page = ''
+        for page in external_404_pages:
+            if parent_page != page.parent.url:
+                parent_page = page.parent.url
+                print(
+                "\nExamined {} : \nPages with response Code 404 : ".format(
+                    parent_page))
+            print("{} ".format(page.url))
 
         # print("\n\nInternal pages")
         # intenal_pages = sorted(filter((lambda wp: not wp.external_url),
@@ -142,8 +153,17 @@ class MyTwistedScrapper:
         print("\n\nInternal pages with 404 errors")
         internal_404_pages = sorted(filter((lambda wp: not wp.external_url
         and wp.response_code == 404), self.visited_urls))
-        for url in internal_404_pages:
-            print(url)
+
+        internal_404_pages.sort(key=lambda x: x.parent)
+        parent_page = ''
+        for page in internal_404_pages:
+            if parent_page != page.parent.url:
+                parent_page = page.parent.url
+                print(
+                "\nExamined {} : \nPages with response Code 404 : ".format(
+                    parent_page))
+            print("{} ".format(page.url))
+            # print(url)
 
             # print(
             #     "\nTotal pages visited : {}\nPages with JS errors : {}"
@@ -168,10 +188,11 @@ def main(start_url):
     l.start(2.0)
     reactor.run()
 
+
 if __name__ == "__main__":
     START_URL = sys.argv[1] if len(sys.argv) == 2 \
         else config.get('scrapper-params', 'START_URL')
 
     main(START_URL)
-
+ 
 
