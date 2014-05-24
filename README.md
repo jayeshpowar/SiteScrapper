@@ -14,7 +14,11 @@ Start scrapping  by executing
 The current version of the code is using python 2.7 .
 To scrape the site using the twisted version of the library execute :
 
-**python my_twisted_scrapper.py 'http://www.example.com'**
+**python my_twisted_scrapper.py --url='http://www.example.com'**
+
+for javascript errors detection ( takes too much time )
+
+**python my_twisted_scrapper.py --jserrors --url='http://www.example.com'**
 
 
 The twisted version spawns quite large number of connections on the server
@@ -22,8 +26,7 @@ resulting in conditions similar to DOS and might lead to pages returning 503
 errors. In such scenarios modify the max concurrent connections settings in the
 **config.ini** file .
 
-Deprecated threaded version (for reference ) use
-python Scrapper.py 'http://www.example.com'
+
 
 
 Configurations
