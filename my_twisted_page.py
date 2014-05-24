@@ -42,6 +42,7 @@ class WebClientContextFactory(ClientContextFactory):
 class MyTwistedPage:
     def __init__(self, url, parent, base_site, base_domain, domains_to_skip):
         self.url = '' if url is None else url
+        # self.url = unicode(self.url).encode('utf-8')
         self.base_domain = base_domain
         self.response_code = -1
         self.external_url = self.base_domain not in extract_domain(self.url)
@@ -52,6 +53,12 @@ class MyTwistedPage:
         self.base_site = base_site
         self.content_type = "text/html"
         self.domains_to_skip = domains_to_skip
+        self.redirect_location = ''
+
+
+    def is_redirected_to_external_site(self):
+        redirected_domain = extract_domain(self.redirect_location)
+        return self.base_domain in extract_domain(redirected_domain)
 
     def process_head_response(self, response):
         logger.debug(
@@ -59,15 +66,22 @@ class MyTwistedPage:
         self.response_code = response.code
         self.content_type = "".join(
             response.headers.getRawHeaders('Content-Type', ''))
+
+        if response.previousResponse is not None:
+            self.redirect_location = response.previousResponse.headers.getRawHeaders(
+                "location")
+
         if response.code >= 404:
-            raise Exception('Failed with error code {}'.format(response.code))
+            raise Exception(
+                'Failed with error code {}'.format(response.code))
 
         return response.code
 
 
     def process_head_failure(self, failure):
         logger.info("Called {} for {} due to {} ".format('process_head_failure',
-                                                         self.url,
+                                                         self.url.encode(
+                                                             'utf8'),
                                                          failure.value))
         self.content_type = 'UNKNOWN'
         raise Exception(failure.value)
@@ -76,6 +90,8 @@ class MyTwistedPage:
         if href_value.startswith('#'):
             link = self.url
         else:
+            href_value = href_value.replace("..", "") \
+                if href_value.startswith("..") else href_value
             link = urlparse.urljoin(self.url, href_value, allow_fragments=False)
             link = link if 'javascript:void' not in href_value \
                 and not href_value.startswith('mailto') else None
@@ -83,7 +99,8 @@ class MyTwistedPage:
 
     def process_get_response(self, response):
         logger.debug(
-            "Called {} for {} ".format('process_get_response', self.url))
+            "Called {} for {} ".format('process_get_response',
+                                       self.url.encode('utf8')))
         if not self.external_url:
             html_source = response
             soup = BeautifulSoup(html_source)
@@ -112,27 +129,24 @@ class MyTwistedPage:
 
     def process_get_failure(self, response):
         logger.info("Called {} for {} with {} ".format('process_get_failure',
-                                                       self.url,
+                                                       self.url.encode('utf8'),
                                                        response.value))
         self.content_type = 'UNKNOWN'
 
     def make_head_request(self):
-        logger.debug("Called {} for {}".format('make_head_request', self.url))
-        # agent = RedirectAgent(Agent(reactor))
         agent = BrowserLikeRedirectAgent(Agent(reactor))
         if 'https' in self.url:
-            contextFactory = WebClientContextFactory()
-            agent = BrowserLikeRedirectAgent(Agent(reactor, contextFactory))
-
-        deferred = agent.request('HEAD', bytes(self.url))
-
+            context_factory = WebClientContextFactory()
+            agent = BrowserLikeRedirectAgent(Agent(reactor, context_factory))
+        deferred = agent.request('HEAD', bytes(self.url.encode('utf8')))
         return deferred
 
     def make_get_request(self, status):
-        logger.debug("Called {} for {}  ".format('make_get_request', self.url))
+        logger.debug("Called {} for {}  ".format('make_get_request',
+                                                 self.url.encode('utf8')))
         d = Deferred()
-        if 'text/html' in self.content_type and not self.external_url:
-            d = getPage(bytes(self.url), timeout=30)
+        if 'text/html' in self.content_type and not self.external_url and not self.is_redirected_to_external_site():
+            d = getPage(bytes(self.url.encode('utf8')), timeout=30)
         else:
             d.callback("No html content")
         return d
