@@ -7,6 +7,10 @@ from twisted.internet.defer import DeferredList, Deferred
 
 
 
+
+
+
+
 # pollreactor.install()
 from twisted.internet import reactor
 from config import DOMAINS_TO_BE_SKIPPED, START_URL, \
@@ -58,7 +62,6 @@ class MyTwistedScrapper:
         self.start_idle_counter = True
 
     def trial_fetch(self):
-        print("called fetch")
 
         while self.idle_ping < IDLE_PING_COUNT:
             # logger.info(
@@ -183,7 +186,7 @@ if __name__ == "__main__":
                                   scrapper.visited_urls))
 
     if enable_js_tests:
-        print("Identifying the javascript and page loading errors")
+        print("\n\nIdentifying the javascript and page loading errors\n\n")
         SCRIPT = 'visitor.js'
         params = [PHANTOM_JS_LOCATION, SCRIPT, "urls.txt", ""]
         js_console = subprocess.check_output(params)
