@@ -1,4 +1,3 @@
-import ConfigParser
 import argparse
 from threading import Lock
 import subprocess
@@ -8,29 +7,17 @@ from twisted.internet.defer import DeferredList, Deferred
 
 
 
-
 # pollreactor.install()
 from twisted.internet import reactor
-from my_twisted_page import extract_domain, extract_base_site, MyTwistedPage
+from config import DOMAINS_TO_BE_SKIPPED, START_URL, \
+    MAX_CONCURRENT_REQUESTS_PER_SERVER, PHANTOM_JS_LOCATION, IDLE_PING_COUNT
+from web_page import extract_domain, extract_base_site, MyTwistedPage
 import logging
 
 logging.basicConfig(filemode='w', level=logging.INFO)
 handler = logging.FileHandler('scrapper.log')
 logger = logging.getLogger(__name__)
 logger.addHandler(handler)
-
-
-config = ConfigParser.RawConfigParser()
-config.readfp(open(r'config.ini'))
-MAX_CONCURRENT_REQUESTS = config.getint('scrapper-params',
-                                        'MAX_CONCURRENT_REQUESTS_PER_SERVER')
-IDLE_PING_COUNT = config.getint('scrapper-params', 'IDLE_PING_COUNT')
-PAGE_TIMEOUT = config.getint('page-params', 'PAGE_TIMEOUT')
-DOMAINS_TO_BE_SKIPPED = config.get('scrapper-params',
-                                   'DOMAINS_TO_BE_SKIPPED').split(',')
-
-PHANTOM = config.get('scrapper-params', 'PHANTOMJS_LOCATION')
-
 
 class MyTwistedScrapper:
     def __init__(self, base_url):
@@ -72,7 +59,6 @@ class MyTwistedScrapper:
 
     def trial_fetch(self):
         print("called fetch")
-        global IDLE_PING_COUNT
 
         while self.idle_ping < IDLE_PING_COUNT:
             # logger.info(
@@ -80,7 +66,8 @@ class MyTwistedScrapper:
             #     .format(self.added_count, len(self.visited_urls),
             #             len(self.intermediate_urls)))
             print "Total urls added :  {} , Total urls visited : {} , Total urls in process : {}  \r" \
-                .format(self.added_count, len(self.visited_urls), len(self.intermediate_urls))
+                .format(self.added_count, len(self.visited_urls),
+                        len(self.intermediate_urls))
 
             if len(self.non_visited_urls) > 0:
                 self.idle_ping = 0
@@ -108,7 +95,7 @@ class MyTwistedScrapper:
         deferreds = []
         coop = task.Cooperator()
         work = self.trial_fetch()
-        for i in xrange(MAX_CONCURRENT_REQUESTS):
+        for i in xrange(MAX_CONCURRENT_REQUESTS_PER_SERVER):
             d = coop.coiterate(work)
             deferreds.append(d)
         dl = DeferredList(deferreds)
@@ -160,12 +147,20 @@ class MyTwistedScrapper:
             .format(len(self.visited_urls),
                     len(external_404_pages), len(internal_404_pages)))
 
+        internal_pages = sorted(filter((lambda wp: not wp.external_url
+                                                   and wp.response_code == 200 and wp.content_type == 'text/html'),
+                                       self.visited_urls))
+
+        with open("urls.txt", 'w') as file:
+            for page in internal_pages:
+                file.write("{}\n".format(page.url))
+
 
 def process_parameters():
     parser = argparse.ArgumentParser(description='A Simple website scrapper')
     parser.add_argument("--url",
                         help="the start url , defaults to the confog.ini url",
-                        default=config.get('scrapper-params', 'START_URL'))
+                        default=START_URL)
     parser.add_argument('--jserrors', dest='testjs', action='store_true')
     parser.add_argument('--no-jserrors', dest='testjs', action='store_false')
     parser.set_defaults(testjs=False)
@@ -188,15 +183,12 @@ if __name__ == "__main__":
                                   scrapper.visited_urls))
 
     if enable_js_tests:
-        print("Identifying the javascript errors")
+        print("Identifying the javascript and page loading errors")
         SCRIPT = 'visitor.js'
-        for page in intenal_pages:
-            params = [PHANTOM, SCRIPT, page.url, ""]
-            js_console = subprocess.check_output(params)
-            if js_console != '':
-                page.errors.append(js_console)
-                print(
-                "Page : {} \n JS Errors :\n {}".format(page.url, js_console))
+        params = [PHANTOM_JS_LOCATION, SCRIPT, "urls.txt", ""]
+        js_console = subprocess.check_output(params)
+
+        print(js_console)
 
 
 

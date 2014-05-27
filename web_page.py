@@ -12,6 +12,8 @@ from twisted.web.client import Agent, getPage, WebClientContextFactory, \
     BrowserLikeRedirectAgent
 from tldextract import extract
 
+from config import PAGE_TIMEOUT
+
 
 logging.basicConfig(filemode='w', filename='page.log', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -145,8 +147,9 @@ class MyTwistedPage:
         logger.debug("Called {} for {}  ".format('make_get_request',
                                                  self.url.encode('utf8')))
         d = Deferred()
-        if 'text/html' in self.content_type and not self.external_url and not self.is_redirected_to_external_site():
-            d = getPage(bytes(self.url.encode('utf8')), timeout=30)
+        if 'text/html' in self.content_type and not self.external_url \
+                and not self.is_redirected_to_external_site():
+            d = getPage(bytes(self.url.encode('utf8')), timeout=PAGE_TIMEOUT)
         else:
             d.callback("No html content")
         return d
