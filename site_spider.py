@@ -153,6 +153,20 @@ def process_parameters():
     return parser.parse_args()
 
 
+def invoke_url_in_browser(index):
+    print("\n\nIdentifying the javascript and page loading errors\n\n")
+    SCRIPT = 'trial.js'
+    params = [PHANTOM_JS_LOCATION, SCRIPT, "all_internal_pages.txt", index]
+    # js_console = subprocess.check_output(params)
+
+    p = subprocess.Popen(params, stdout=subprocess.PIPE, bufsize=1)
+    for line in iter(p.stdout.readline, b''):
+        print line,
+    p.communicate()
+
+    # errors = js_console
+
+
 if __name__ == "__main__":
 
     args = process_parameters()
@@ -165,12 +179,12 @@ if __name__ == "__main__":
 
     if enable_js_tests:
         print("\n\nIdentifying the javascript and page loading errors\n\n")
-        SCRIPT = 'visitor.js'
+        SCRIPT = 'trial.js'
         params = [PHANTOM_JS_LOCATION, SCRIPT, "all_internal_pages.txt", ""]
-        js_console = subprocess.check_output(params)
-
-        print(js_console)
-
+        p = subprocess.Popen(params, stdout=subprocess.PIPE, bufsize=1)
+        for line in iter(p.stdout.readline, b''):
+            print line,
+        p.communicate()
 
 
 
