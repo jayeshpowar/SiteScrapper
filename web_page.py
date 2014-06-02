@@ -41,7 +41,7 @@ class WebClientContextFactory(ClientContextFactory):
         return ClientContextFactory.getContext(self)
 
 
-class MyTwistedPage:
+class WebPage:
     def __init__(self, url, parent, base_site, base_domain, domains_to_skip):
         self.url = '' if url is None else url
         # self.url = unicode(self.url).encode('utf-8')
@@ -122,7 +122,7 @@ class MyTwistedPage:
                                                     link_info.domain,
                                                     link_info.suffix)
                     if parsed_link not in self.domains_to_skip:
-                        link_page = MyTwistedPage(link, self, self.base_site,
+                        link_page = WebPage(link, self, self.base_site,
                                                   self.base_domain,
                                                   self.domains_to_skip)
                         self.links.add(link_page)

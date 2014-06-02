@@ -15,4 +15,4 @@ DOMAINS_TO_BE_SKIPPED = ['community.appdynamics.com',
 PHANTOM_JS_LOCATION = '/usr/bin/phantomjs'
 
 PAGE_TIMEOUT = 30
-ERROR_CODES = [404, 500, 403]
+ERROR_CODES = [-1, 404, 500, 403]
