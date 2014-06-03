@@ -163,6 +163,16 @@ def invoke_url_in_browser(index):
         print line,
     p.communicate()
 
+
+def worker(url):
+    script = 'single_url_invoker.js'
+    params = [PHANTOM_JS_LOCATION, script, url.strip('\n')]
+    p = subprocess.Popen(params, stdout=subprocess.PIPE, bufsize=1)
+    for line in iter(p.stdout.readline, b''):
+        print line,
+    p.communicate()
+
+
 if __name__ == "__main__":
 
     args = process_parameters()
@@ -181,3 +191,13 @@ if __name__ == "__main__":
         for line in iter(p.stdout.readline, b''):
             print line,
         p.communicate()
+
+        # fname= "all_internal_pages.txt"
+        # content= []
+        # with open(fname) as f:
+        # content = f.readlines()
+        #
+        # threads = []
+        # count = 0
+        # pool = Pool(processes=50)
+        # pool.map(worker, sorted(content))
