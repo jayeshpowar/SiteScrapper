@@ -43,9 +43,12 @@ def print_pages_with_errors(is_external_page, page_set):
         for page in pages:
             if parent_page != page.parent.url:
                 parent_page = page.parent.url
+                code = str(error_code)
+                if error_code == -1:
+                    code = '-1 (unknown)'
                 print(
                     "\nExamined {} : \nPages with response Code {} : ".format(
-                        parent_page.encode('utf8'), error_code))
+                        parent_page.encode('utf8'), code))
             print("{} ".format(page.url.encode('utf8')))
 
 
