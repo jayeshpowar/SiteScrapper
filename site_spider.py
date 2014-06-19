@@ -1,4 +1,6 @@
 import argparse
+from multiprocessing import Pool
+import tempfile
 from threading import Lock
 import subprocess
 import logging
@@ -9,7 +11,7 @@ from twisted.internet import reactor
 
 from config import DOMAINS_TO_BE_SKIPPED, START_URL, \
     MAX_CONCURRENT_REQUESTS_PER_SERVER, PHANTOM_JS_LOCATION, IDLE_PING_COUNT, \
-    ERROR_CODES
+    ERROR_CODES, BROWSER_PROCESS_COUNT
 from web_page import extract_domain, extract_base_site, WebPage
 
 
@@ -153,25 +155,16 @@ def process_parameters():
     return parser.parse_args()
 
 
-def invoke_url_in_browser(index):
-    print("\n\nIdentifying the javascript and page loading errors\n\n")
-    SCRIPT = 'trial.js'
-    params = [PHANTOM_JS_LOCATION, SCRIPT, "all_internal_pages.txt", index]
+def invoke_url_in_browser(file_name):
+    print("\n\nIdentifying the javascript and page loading errors for {}\n\n".format(file_name))
+    SCRIPT = 'single_url_invoker.js'
+    params = [PHANTOM_JS_LOCATION, SCRIPT, file_name]
 
     p = subprocess.Popen(params, stdout=subprocess.PIPE, bufsize=1)
     for line in iter(p.stdout.readline, b''):
         print line,
     p.communicate()
-
-
-def worker(url):
-    script = 'single_url_invoker.js'
-    params = [PHANTOM_JS_LOCATION, script, url.strip('\n')]
-    p = subprocess.Popen(params, stdout=subprocess.PIPE, bufsize=1)
-    for line in iter(p.stdout.readline, b''):
-        print line,
-    p.communicate()
-
+    print("\n\nWrapping for {}\n\n".format(file_name))
 
 if __name__ == "__main__":
 
@@ -185,19 +178,38 @@ if __name__ == "__main__":
 
     if enable_js_tests:
         print("\n\nIdentifying the javascript and page loading errors\n\n")
-        SCRIPT = 'page_invoker.js'
-        params = [PHANTOM_JS_LOCATION, SCRIPT, "all_internal_pages.txt", ""]
-        p = subprocess.Popen(params, stdout=subprocess.PIPE, bufsize=1)
-        for line in iter(p.stdout.readline, b''):
-            print line,
-        p.communicate()
+        # SCRIPT = 'visitor.js'
+        # params = [PHANTOM_JS_LOCATION, SCRIPT, "all_internal_pages.txt", ""]
+        # p = subprocess.Popen(params, stdout=subprocess.PIPE, bufsize=1)
+        # for line in iter(p.stdout.readline, b''):
+        # print line,
+        # p.communicate()
 
-        # fname= "all_internal_pages.txt"
-        # content= []
-        # with open(fname) as f:
-        # content = f.readlines()
-        #
-        # threads = []
-        # count = 0
-        # pool = Pool(processes=50)
-        # pool.map(worker, sorted(content))
+        try:
+            fname = "all_internal_pages.txt"
+            content = []
+            with open(fname) as f:
+                content = f.readlines()
+
+            init_count = 0
+            prev_count = 0
+            offset = len(content) / BROWSER_PROCESS_COUNT
+            file_list = []
+            file_handles = []
+            for index in range(BROWSER_PROCESS_COUNT):
+                init_count = prev_count
+                prev_count += offset
+                list_to_print = content[init_count:prev_count]
+                temp = tempfile.NamedTemporaryFile(mode='w+t')
+                temp.writelines(list_to_print)
+                temp.seek(0)
+                file_list.append(temp.name)
+                file_handles.append(temp)
+                if prev_count >= len(content):
+                    break
+
+            pool = Pool(processes=BROWSER_PROCESS_COUNT)
+            pool.map(invoke_url_in_browser, sorted(file_list))
+
+        finally:
+            [file_handle.close() for file_handle in file_handles]
