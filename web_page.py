@@ -106,7 +106,7 @@ class WebPage:
         if not self.external_url:
             html_source = response
             print(html_source)
-            soup = BeautifulSoup(markup=html_source)
+            soup = BeautifulSoup(html_source, 'lxml')
             link_elements = soup.find_all("a")
 
             link_count = 0
