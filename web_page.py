@@ -105,6 +105,7 @@ class WebPage:
                                        self.url.encode('utf8')))
         if not self.external_url:
             html_source = response
+            print(html_source)
             soup = BeautifulSoup(html_source)
             link_elements = soup.find_all("a")
 
