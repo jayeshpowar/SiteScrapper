@@ -2,7 +2,7 @@ import urlparse
 import logging
 import subprocess
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, SoupStrainer
 from selenium import webdriver
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, maybeDeferred, succeed
@@ -107,7 +107,7 @@ class WebPage:
             html_source = response
             print(html_source)
             # html_source, errs = tidy_document(html_source)
-            soup = BeautifulSoup(html_source, 'lxml')
+            soup = BeautifulSoup(html_source, parse_only=SoupStrainer('a'))
             link_elements = soup.find_all("a")
 
             link_count = 0
