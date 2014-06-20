@@ -29,17 +29,13 @@ function visit(url){
                   url = 'data(...)';
                 }
                 if(errorCodes.indexOf(resource.status)>=0){
-                   console.log('{"Broken Resource ":'+url+',"parent":'+page.url+'}');
+                   console.log('{"broken-resource":"'+url+'","parent":"'+page.url+'"}');
                 }
               }
         };
 
         page.onError = function(msg, trace) {
-          //page.errors.push(msg);
-
-              console.log('{"Error ":'+msg+',"parent":'+page.url+'}');
-
-
+             console.log('{"error":"'+msg+'","parent":"'+page.url+'"}');
         };
 
         page.open(page.address, function (status) {
