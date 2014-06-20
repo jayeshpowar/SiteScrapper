@@ -2,7 +2,7 @@ import urlparse
 import logging
 import subprocess
 
-from bs4 import BeautifulSoup, SoupStrainer
+import lxml.html
 from selenium import webdriver
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, maybeDeferred, succeed
@@ -105,19 +105,24 @@ class WebPage:
                                        self.url.encode('utf8')))
         if not self.external_url:
             html_source = response
-            print(html_source)
             # html_source, errs = tidy_document(html_source)
-            soup = BeautifulSoup(html_source, parse_only=SoupStrainer('a'))
-            link_elements = soup.find_all("a")
+
+            # soup = BeautifulSoup(html_source, parse_only=SoupStrainer('a'))
+            # link_elements = soup.find_all("a")
+            dom = lxml.html.fromstring(html_source)
+
+            # for link in dom.xpath('//a/@href'): # select the url in href for all a tags(links)
+            # print link
 
             link_count = 0
-            for link_tag in link_elements:
-                link = None
-                if link_tag.has_attr('href'):
-                    href_value = link_tag['href']
-                    link = self.format_link(href_value)
-                else:
-                    continue
+            for href_value in dom.xpath('//a/@href'):
+                # link = None
+                # if link_tag.has_attr('href'):
+                # href_value = link_tag['href']
+                #     link = self.format_link(href_value)
+                # else:
+                #     continue
+                link = self.format_link(href_value)
                 if link is not None:
                     link_info = extract(link)
                     parsed_link = "{}.{}.{}".format(link_info.subdomain,
