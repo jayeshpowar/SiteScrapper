@@ -214,7 +214,7 @@ if __name__ == "__main__":
         if not url_list_file:
             print("Missing file containing  url list, please provide one with --url-file parameter")
             sys.exit(1)
-        print("\n\nIdentifying the javascript and page loading errors for {} \n\n".format(url_list_file))
+        # print("\n\nIdentifying the javascript and page loading errors for {} \n\n".format(url_list_file))
         detect_js_and_resource_issues(url_list_file)
         sys.exit(0)
 
@@ -223,7 +223,7 @@ if __name__ == "__main__":
     reactor.run()
 
     if enable_js_tests:
-        print("\n\nIdentifying the javascript and page loading errors\n\n")
+        # print("\n\nIdentifying the javascript and page loading errors\n\n")
         detect_js_and_resource_issues("all_internal_pages.txt")
 
 

@@ -14,8 +14,8 @@ var errorCodes = [403,404,500,505];
 
 page.settings.resourceTimeout = 30000; // 15 seconds
 
-function visit(url){
-      console.log("Remaining Urls : " +srcProducts.length);
+function visit(url , file_name){
+      console.log("Remaining Urls : " +srcProducts.length + " for "+file_name);
       var page = new WebPage();
       page.address = url;
       page.brokenResources = new Array();
@@ -71,7 +71,7 @@ function visit(url){
 
                    if(srcProducts.length != 0){
                         var url = srcProducts.pop();
-                        visit(url);
+                        visit(url, file_name);
 
                    }else{
                          phantom.exit();
@@ -91,7 +91,7 @@ var busy =false;
 
 //while (srcProducts.length != 0) {
     var url = srcProducts.pop();
-    visit(url);
+    visit(url,file_name);
 //  }
 
  //phantom.exit();
