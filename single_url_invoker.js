@@ -69,7 +69,7 @@ function visit(url , file_name){
                  //  console.log('visited '+url );
                    page.close();
 
-                   if(srcProducts.length != 0){
+                   if(srcProducts.length > 5){
                         var url = srcProducts.pop();
                         visit(url, file_name);
 
