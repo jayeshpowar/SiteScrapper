@@ -4,6 +4,7 @@ import tempfile
 from threading import Lock
 import subprocess
 import logging
+import sys
 
 from twisted.internet import task
 from twisted.internet.defer import DeferredList, Deferred
@@ -149,11 +150,11 @@ class SiteSpider:
 
 def process_parameters():
     parser = argparse.ArgumentParser(description='A Simple website scrapper')
-    parser.add_argument("--url",
-                        help="the start url , defaults to the confog.ini url",
-                        default=START_URL)
+    parser.add_argument("--url", help="the start url , defaults to the confog.ini url", default=START_URL)
+    parser.add_argument("--url-file", dest="url_file", help="File containing list of urls ", action="store")
     parser.add_argument('--jserrors', dest='testjs', action='store_true')
     parser.add_argument('--no-jserrors', dest='testjs', action='store_false')
+    parser.add_argument('--process-exisitng-urls', dest='process_file', action='store')
     parser.set_defaults(testjs=False)
     return parser.parse_args()
 
@@ -169,11 +170,53 @@ def invoke_url_in_browser(file_name):
     p.communicate()
     print("\n\nWrapping for {}\n\n".format(file_name))
 
+
+def detect_js_and_resource_issues(file_name):
+    try:
+        fname = file_name
+        content = []
+        with open(fname) as f:
+            content = f.readlines()
+
+        init_count = 0
+        prev_count = 0
+        offset = len(content) / BROWSER_PROCESS_COUNT
+        file_list = []
+        file_handles = []
+        for index in range(BROWSER_PROCESS_COUNT):
+            init_count = prev_count
+            prev_count += offset
+            list_to_print = content[init_count:prev_count]
+            temp = tempfile.NamedTemporaryFile(mode='w+t')
+            temp.writelines(list_to_print)
+            temp.seek(0)
+            file_list.append(temp.name)
+            file_handles.append(temp)
+            if prev_count >= len(content):
+                break
+
+        pool = Pool(processes=BROWSER_PROCESS_COUNT)
+        pool.map(invoke_url_in_browser, sorted(file_list))
+
+    finally:
+        [file_handle.close() for file_handle in file_handles]
+
+
 if __name__ == "__main__":
 
     args = process_parameters()
     base_url = args.url
     enable_js_tests = args.testjs
+    process_existing_urls = args.process_file
+    url_list_file = args.url_file
+
+    if process_existing_urls:
+        if not url_list_file:
+            print("Missing file containing  url list, please provide one with --url-file parameter")
+            sys.exit(1)
+        print("\n\nIdentifying the javascript and page loading errors for {} \n\n".format(url_list_file))
+        detect_js_and_resource_issues(url_list_file)
+        sys.exit(0)
 
     scrapper = SiteSpider(base_url)
     reactor.callLater(2, scrapper.crawl)
@@ -181,38 +224,9 @@ if __name__ == "__main__":
 
     if enable_js_tests:
         print("\n\nIdentifying the javascript and page loading errors\n\n")
-        # SCRIPT = 'visitor.js'
-        # params = [PHANTOM_JS_LOCATION, SCRIPT, "all_internal_pages.txt", ""]
-        # p = subprocess.Popen(params, stdout=subprocess.PIPE, bufsize=1)
-        # for line in iter(p.stdout.readline, b''):
-        # print line,
-        # p.communicate()
+        detect_js_and_resource_issues("all_internal_pages.txt")
 
-        try:
-            fname = "all_internal_pages.txt"
-            content = []
-            with open(fname) as f:
-                content = f.readlines()
 
-            init_count = 0
-            prev_count = 0
-            offset = len(content) / BROWSER_PROCESS_COUNT
-            file_list = []
-            file_handles = []
-            for index in range(BROWSER_PROCESS_COUNT):
-                init_count = prev_count
-                prev_count += offset
-                list_to_print = content[init_count:prev_count]
-                temp = tempfile.NamedTemporaryFile(mode='w+t')
-                temp.writelines(list_to_print)
-                temp.seek(0)
-                file_list.append(temp.name)
-                file_handles.append(temp)
-                if prev_count >= len(content):
-                    break
 
-            pool = Pool(processes=BROWSER_PROCESS_COUNT)
-            pool.map(invoke_url_in_browser, sorted(file_list))
 
-        finally:
-            [file_handle.close() for file_handle in file_handles]
+
