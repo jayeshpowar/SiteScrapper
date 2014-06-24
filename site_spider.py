@@ -1,5 +1,5 @@
 import argparse
-from multiprocessing import Pool
+import multiprocessing
 import tempfile
 from threading import Lock
 import subprocess
@@ -12,7 +12,7 @@ from twisted.internet import reactor
 
 from config import DOMAINS_TO_BE_SKIPPED, START_URL, \
     MAX_CONCURRENT_REQUESTS_PER_SERVER, PHANTOM_JS_LOCATION, IDLE_PING_COUNT, \
-    ERROR_CODES, BROWSER_PROCESS_COUNT
+    ERROR_CODES
 from web_page import extract_domain, extract_base_site, WebPage
 
 
@@ -152,31 +152,42 @@ def process_parameters():
     return parser.parse_args()
 
 
+def enqueue_output(out, queue):
+    for line in iter(out.readline, b''):
+        queue.put(line)
+    out.close()
+
+
 def invoke_url_in_browser(file_name):
     print("\n\nIdentifying the javascript and page loading errors for {}\n\n".format(file_name))
     SCRIPT = 'single_url_invoker.js'
     params = [PHANTOM_JS_LOCATION, SCRIPT, file_name]
 
     p = subprocess.Popen(params, stdout=subprocess.PIPE, bufsize=1)
+    # q = multiprocessing.Queue()
+    # t = Thread(target=enqueue_output, args=(p.stdout, q))
+    # t.daemon = True # thread dies with the program
+    # t.start()
+
     for line in iter(p.stdout.readline, b''):
-        print line,
+        print(">> %s " % line)
     p.communicate()
     print("\n\nWrapping for {}\n\n".format(file_name))
 
 
 def detect_js_and_resource_issues(file_name):
     try:
-        fname = file_name
-        content = []
-        with open(fname) as f:
+        with open(file_name) as f:
             content = f.readlines()
 
-        init_count = 0
+        pool_size = multiprocessing.cpu_count() * 2
+        print("Breaking original url list file into {} files".format(pool_size))
+
         prev_count = 0
-        offset = len(content) / BROWSER_PROCESS_COUNT
+        offset = len(content) / pool_size
         file_list = []
         file_handles = []
-        for index in range(BROWSER_PROCESS_COUNT):
+        for index in range(pool_size):
             init_count = prev_count
             prev_count += offset
             list_to_print = content[init_count:prev_count]
@@ -188,8 +199,10 @@ def detect_js_and_resource_issues(file_name):
             if prev_count >= len(content):
                 break
 
-        pool = Pool(processes=BROWSER_PROCESS_COUNT)
+        pool = multiprocessing.Pool(processes=pool_size)
         pool.map(invoke_url_in_browser, sorted(file_list))
+        pool.join()
+        pool.close()
 
     finally:
         [file_handle.close() for file_handle in file_handles]
@@ -207,7 +220,6 @@ if __name__ == "__main__":
         if not url_list_file:
             print("Missing file containing  url list, please provide one with --url-file parameter")
             sys.exit(1)
-        # print("\n\nIdentifying the javascript and page loading errors for {} \n\n".format(url_list_file))
         detect_js_and_resource_issues(url_list_file)
         sys.exit(0)
 
@@ -216,7 +228,6 @@ if __name__ == "__main__":
     reactor.run()
 
     if enable_js_tests:
-        # print("\n\nIdentifying the javascript and page loading errors\n\n")
         detect_js_and_resource_issues("all_internal_pages.txt")
 
 
