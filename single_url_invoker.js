@@ -44,32 +44,10 @@ function visit(url , file_name){
                     console.log('FAIL to load the address '+ page.address);
                 }else{
 
-                    var arrayLength = page.errors.length;
-                    var resourcesLength = page.brokenResources.length;
 
-                    if( arrayLength >0 || resourcesLength >0 ){
-                         console.log('\n\nExamined page '+page.address);
-                    }
-
-                    if( arrayLength >0 ){
-                        console.log("Errors found :")
-                          for (var i = 0; i < arrayLength; i++) {
-                            console.log(page.errors[i]);
-                          }
-                    }
-
-
-
-                    if( resourcesLength >0 ){
-                      console.log("Broken Resources found : ");
-                        for (var i = 0; i < resourcesLength; i++) {
-                            console.log(page.brokenResources[i]);
-                        }
-                    }
-                 //  console.log('visited '+url );
                    page.close();
 
-                   if(srcProducts.length > 5){
+                   if(srcProducts.length > 2){
                         var url = srcProducts.pop();
                         visit(url, file_name);
 

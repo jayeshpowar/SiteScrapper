@@ -1,4 +1,5 @@
 import argparse
+import json
 import multiprocessing
 import tempfile
 from threading import Lock
@@ -20,6 +21,32 @@ logging.basicConfig(filemode='w', level=logging.INFO)
 handler = logging.FileHandler('scrapper.log')
 logger = logging.getLogger(__name__)
 logger.addHandler(handler)
+
+RESOURCES_STATE = dict()
+universal_messages = []
+
+
+class Resource:
+    def __init__(self, parent=''):
+        self.parent = parent
+        self.error = list()
+        self.resource_issues = list()
+
+    def add_error(self, error):
+        self.error.append(error)
+        return self
+
+    def add_resource(self, resource):
+        self.resource_issues.append(resource)
+        return self
+
+    def __str__(self):
+        str = '\n%s' % self.parent
+        errors = ("\nJavascript Errors : \n" + "\n".join(self.error)) if self.error else ""
+        resources = ("\nBroken Resources : \n" + "\n".join(self.resource_issues)) if self.resource_issues else ""
+        str += errors
+        str += resources
+        return str
 
 
 def print_pages_to_file(file_name, identify_external, page_set,
@@ -152,27 +179,37 @@ def process_parameters():
     return parser.parse_args()
 
 
-def enqueue_output(out, queue):
-    for line in iter(out.readline, b''):
-        queue.put(line)
-    out.close()
-
-
 def invoke_url_in_browser(file_name):
+    resources_state = dict()
     print("\n\nIdentifying the javascript and page loading errors for {}\n\n".format(file_name))
     SCRIPT = 'single_url_invoker.js'
     params = [PHANTOM_JS_LOCATION, SCRIPT, file_name]
 
     p = subprocess.Popen(params, stdout=subprocess.PIPE, bufsize=1)
-    # q = multiprocessing.Queue()
-    # t = Thread(target=enqueue_output, args=(p.stdout, q))
-    # t.daemon = True # thread dies with the program
-    # t.start()
 
     for line in iter(p.stdout.readline, b''):
-        print(">> %s " % line)
+        print("%s" % line)
+        if "parent" in line and ("error" in line or "broken-resource" in line):
+            universal_messages.append(line)
+
+            data = json.loads(line)
+            parent = data.get('parent')
+            error = data.get('error', '')
+            broken_resource = data.get('broken-resource', '')
+            if not resources_state.get(parent):
+                resources_state[parent] = Resource(parent)
+            if 'error' in line:
+                resource = resources_state[parent].add_error(error)
+                resources_state[parent] = resource
+            else:
+                resources_state[parent] = resources_state[parent].add_resource(broken_resource)
+                # else:
+                # print("%s" % line)
+
+
     p.communicate()
     print("\n\nWrapping for {}\n\n".format(file_name))
+    return resources_state
 
 
 def detect_js_and_resource_issues(file_name):
@@ -180,7 +217,7 @@ def detect_js_and_resource_issues(file_name):
         with open(file_name) as f:
             content = f.readlines()
 
-        pool_size = multiprocessing.cpu_count() * 2
+        pool_size = 3 if multiprocessing.cpu_count() * 2 > 3 else multiprocessing.cpu_count() * 2
         print("Breaking original url list file into {} files".format(pool_size))
 
         prev_count = 0
@@ -200,9 +237,15 @@ def detect_js_and_resource_issues(file_name):
                 break
 
         pool = multiprocessing.Pool(processes=pool_size)
-        pool.map(invoke_url_in_browser, sorted(file_list))
-        pool.join()
-        pool.close()
+        result = pool.map(invoke_url_in_browser, sorted(file_list))
+
+        with open("js_and_broken_resources.txt", 'w') as output_file:
+            for resource_dict in result:
+                for parent, resource in resource_dict.iteritems():
+                    # print('{}\nErrors : \n{}\nBroken-Resources : \n{}'.format(parent, "\n".join(resource.error), "\n".join(resource.resource_issues)))
+                    # output_file.write('{}\nErrors : \n{}\nBroken-Resources : \n{}'.format(parent, "\n".join(resource.error), "\n".join(resource.resource_issues)))
+                    print(resource)
+                    output_file.write(str(resource))
 
     finally:
         [file_handle.close() for file_handle in file_handles]
@@ -229,8 +272,3 @@ if __name__ == "__main__":
 
     if enable_js_tests:
         detect_js_and_resource_issues("all_internal_pages.txt")
-
-
-
-
-
