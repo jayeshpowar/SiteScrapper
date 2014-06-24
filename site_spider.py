@@ -41,7 +41,7 @@ class Resource:
         return self
 
     def __str__(self):
-        str = '\n%s' % self.parent
+        str = '\n\n%s' % self.parent
         errors = ("\nJavascript Errors : \n" + "\n".join(self.error)) if self.error else ""
         resources = ("\nBroken Resources : \n" + "\n".join(self.resource_issues)) if self.resource_issues else ""
         str += errors
