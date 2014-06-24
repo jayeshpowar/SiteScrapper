@@ -34,23 +34,22 @@ def print_pages_to_file(file_name, identify_external, page_set,
             output_file.write("{}\n".format(page.url))
 
 
-def print_pages_with_errors(is_external_page, page_set):
-    for error_code in ERROR_CODES:
-        pages = sorted(
-            filter((lambda wp: wp.external_url == is_external_page
-                               and wp.response_code == error_code), page_set))
-        pages.sort(key=lambda x: x.parent)
-        parent_page = ''
-        for page in pages:
-            if parent_page != page.parent.url:
-                parent_page = page.parent.url
-                code = str(error_code)
-                if error_code == -1:
-                    code = '-1 (unknown)'
-                print(
-                    "\nExamined {} : \nPages with response Code {} : ".format(
-                        parent_page.encode('utf8'), code))
-            print("{} ".format(page.url.encode('utf8')))
+def print_pages_with_errors(is_external_page, page_set, file_name):
+    with open(file_name, 'w') as output_file:
+        for error_code in ERROR_CODES:
+            pages = sorted(filter((lambda wp: wp.external_url == is_external_page and wp.response_code == error_code), page_set))
+            pages.sort(key=lambda x: x.parent)
+            parent_page = ''
+            for page in pages:
+                if parent_page != page.parent.url:
+                    parent_page = page.parent.url
+                    code = str(error_code)
+                    if error_code == -1:
+                        code = '-1 (unknown)'
+                    output_file.write("\nExamined {} : \nPages with response Code {} : \n".format(parent_page.encode('utf8'), code))
+                    print("\nExamined {} : \nPages with response Code {} :".format(parent_page.encode('utf8'), code))
+                output_file.write("{} \n".format(page.url.encode('utf8')))
+                print("{}".format(page.url.encode('utf8')))
 
 
 class SiteSpider:
@@ -60,9 +59,7 @@ class SiteSpider:
         self.logger = logging.getLogger(__name__)
         self.base_domain = extract_domain(start_url)
         self.base_site = extract_base_site(start_url)
-        self.non_visited_urls = {
-            WebPage(start_url, None, start_url, self.base_domain,
-                    DOMAINS_TO_BE_SKIPPED)}
+        self.non_visited_urls = {WebPage(start_url, None, start_url, self.base_domain, DOMAINS_TO_BE_SKIPPED)}
         self.added_count = 1
         self.idle_ping = 0
         self.coop = task.Cooperator()
@@ -81,9 +78,7 @@ class SiteSpider:
         return filtered_links
 
     def process_web_page(self, resp, web_page):
-        logger.debug(
-            "Called {} for {}".format('process_web_page',
-                                      unicode(web_page.url).encode("utf-8")))
+        logger.debug("Called {} for {}".format('process_web_page', unicode(web_page.url).encode("utf-8")))
         self.visited_urls.add(web_page)
         self.intermediate_urls.discard(web_page)
         unique_links = self.get_unique_non_visited_links(web_page)
@@ -94,10 +89,8 @@ class SiteSpider:
     def generate_urls_to_visit(self):
 
         while self.idle_ping < IDLE_PING_COUNT:
-            print "Total urls added :  {} , Total urls visited : {} , " \
-                  "Total urls in process : {}  \r" \
-                .format(self.added_count, len(self.visited_urls),
-                        len(self.intermediate_urls))
+            print "Total urls added :  {} , Total urls visited : {} , Total urls in process : {}  \r".format(self.added_count, len(self.visited_urls),
+                                                                                                             len(self.intermediate_urls))
 
             if len(self.non_visited_urls) > 0:
                 self.idle_ping = 0
@@ -139,8 +132,8 @@ class SiteSpider:
         Function to print the stats viz: pages with js errors , pages with 404
         error , external and internal pages .
         """
-        print_pages_with_errors(True, self.visited_urls)
-        print_pages_with_errors(False, self.visited_urls)
+        print_pages_with_errors(True, self.visited_urls, "broken_external_links.txt")
+        print_pages_with_errors(False, self.visited_urls, "broken_internal_links.txt")
 
         print("\nTotal pages visited : {}\n".format(len(self.visited_urls)))
 
