@@ -100,9 +100,9 @@ class WebPage:
         return link
 
     def process_get_response(self, response):
+        encoded_url = self.url.encode('utf8')
         logger.debug(
-            "Called {} for {} ".format('process_get_response',
-                                       self.url.encode('utf8')))
+            "Called {} for {} ".format('process_get_response', encoded_url))
         if not self.external_url:
             html_source = response
             # html_source, errs = tidy_document(html_source)
@@ -110,12 +110,14 @@ class WebPage:
             # soup = BeautifulSoup(html_source, parse_only=SoupStrainer('a'))
             # link_elements = soup.find_all("a")
             dom = lxml.html.fromstring(html_source)
+            logger.debug("obtained dom object for {}".format(encoded_url))
 
             # for link in dom.xpath('//a/@href'): # select the url in href for all a tags(links)
             # print link
 
             link_count = 0
             for href_value in dom.xpath('//a/@href'):
+                logger.debug("Entering for loop for for {}".format(encoded_url))
                 # link = None
                 # if link_tag.has_attr('href'):
                 # href_value = link_tag['href']
@@ -123,7 +125,9 @@ class WebPage:
                 # else:
                 #     continue
                 link = self.format_link(href_value)
-                if link is not None:
+                logger.debug("obtained link  object{} for {}".format(link, encoded_url))
+
+                if link:
                     link_info = extract(link)
                     parsed_link = "{}.{}.{}".format(link_info.subdomain,
                                                     link_info.domain,
