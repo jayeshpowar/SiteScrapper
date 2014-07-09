@@ -134,8 +134,12 @@ class SiteSpider:
         while processed_site_map_url < 2:
             while self.idle_ping < IDLE_PING_COUNT:
                 print "Total urls added :  {} , Total urls visited : {} , Total urls in process : {}  \r".format(
-                    self.added_count, len(self.visited_urls),
-                    len(self.intermediate_urls))
+                    self.added_count, len(self.visited_urls), len(self.intermediate_urls))
+
+                logger.debug(
+                    "Total urls added :  {} , Total urls visited : {} , Total urls in process : {} ping {} \r".format(
+                        self.added_count, len(self.visited_urls), len(self.intermediate_urls), self.idle_ping))
+
 
                 if len(self.non_visited_urls) > 0:
                     self.idle_ping = 0
@@ -160,6 +164,7 @@ class SiteSpider:
                 self.add_sitemap_urls()
             processed_site_map_url += 1
             self.idle_ping = 0
+            logger.debug("Processed sitemap url iteration {}".format(processed_site_map_url))
         raise StopIteration
 
     def crawl(self):
