@@ -59,7 +59,10 @@ class WebPage:
 
 
     def is_redirected_to_external_site(self):
+        encoded_url = self.url.encode('utf8')
+        logger.debug("Redirected location is {} for {}".format(self.redirect_location, encoded_url))
         redirected_domain = extract_domain(self.redirect_location)
+        logger.debug("Redirected domain is {} for {}".format(redirected_domain, encoded_url))
         return self.base_domain in extract_domain(redirected_domain)
 
     def process_head_response(self, response):
@@ -158,6 +161,9 @@ class WebPage:
         logger.debug("Called {} for {}  ".format('make_get_request', encoded_url))
         d = Deferred()
         logger.debug("defer created for {}".format(encoded_url))
+        logger.debug("content type {} for {}".format(self.content_type, encoded_url))
+        logger.debug("external url {} for {}".format(self.external_url, encoded_url))
+        logger.debug("external url {} for {}".format(self.external_url, encoded_url))
         if 'text/html' in self.content_type and not self.external_url and not self.is_redirected_to_external_site():
             logger.debug("About to get page for for {}".format(encoded_url))
             d = getPage(bytes(self.url.encode('utf8')), timeout=PAGE_TIMEOUT)
