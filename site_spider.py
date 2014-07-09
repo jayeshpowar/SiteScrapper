@@ -7,6 +7,9 @@ import subprocess
 import logging
 import sys
 
+from lxml import objectify
+import requests
+
 from twisted.internet import task
 from twisted.internet.defer import DeferredList, Deferred
 from twisted.internet import reactor
@@ -80,7 +83,7 @@ def print_pages_with_errors(is_external_page, page_set, file_name):
 
 
 class SiteSpider:
-    def __init__(self, start_url):
+    def __init__(self, start_url, sitemap_url=None):
         self.visited_urls = set()
         self.intermediate_urls = set()
         self.logger = logging.getLogger(__name__)
@@ -91,11 +94,24 @@ class SiteSpider:
         self.idle_ping = 0
         self.coop = task.Cooperator()
         self.start_idle_counter = False
+        self.sitemap_url = '{}/sitemap.xml'.format(self.base_site) if not sitemap_url else sitemap_url
 
     def filter_visited_links(self, page):
-        return page not in self.visited_urls \
-               and page not in self.non_visited_urls \
+        return page not in self.visited_urls and page not in self.non_visited_urls \
                and page not in self.intermediate_urls
+
+    def add_sitemap_urls(self):
+        logger.debug("Adding sitemap urls as well for processing")
+        response = requests.get(self.sitemap_url)
+        val = bytes(response.text)
+        root = objectify.fromstring(val)
+
+        for url in root.url:
+            page = WebPage(bytes(url.loc), self.base_site, self.base_site, self.base_domain, DOMAINS_TO_BE_SKIPPED)
+            if page not in self.visited_urls and page not in self.non_visited_urls and page not in self.intermediate_urls:
+                print("Added {}".format(url.loc))
+                self.non_visited_urls.add(page)
+                self.added_count += 1
 
     def get_unique_non_visited_links(self, page):
         l = Lock()
@@ -114,29 +130,36 @@ class SiteSpider:
         self.start_idle_counter = True
 
     def generate_urls_to_visit(self):
+        processed_site_map_url = 0
+        while processed_site_map_url < 2:
+            while self.idle_ping < IDLE_PING_COUNT:
+                print "Total urls added :  {} , Total urls visited : {} , Total urls in process : {}  \r".format(
+                    self.added_count, len(self.visited_urls),
+                    len(self.intermediate_urls))
 
-        while self.idle_ping < IDLE_PING_COUNT:
-            print "Total urls added :  {} , Total urls visited : {} , Total urls in process : {}  \r".format(self.added_count, len(self.visited_urls),
-                                                                                                             len(self.intermediate_urls))
+                if len(self.non_visited_urls) > 0:
+                    self.idle_ping = 0
+                    web_page = self.non_visited_urls.pop()
+                    self.intermediate_urls.add(web_page)
+                    d = web_page.process()
+                    d.addCallback(self.process_web_page, web_page)
+                    yield d
+                elif self.start_idle_counter:
+                    d = Deferred()
+                    reactor.callLater(0.1, d.callback, None)
+                    yield d
+                    self.idle_ping += 1
+                    if self.idle_ping == IDLE_PING_COUNT:
+                        break
+                else:
+                    d = Deferred()
+                    reactor.callLater(0.1, d.callback, None)
+                    yield d
 
-            if len(self.non_visited_urls) > 0:
-                self.idle_ping = 0
-                web_page = self.non_visited_urls.pop()
-                self.intermediate_urls.add(web_page)
-                d = web_page.process()
-                d.addCallback(self.process_web_page, web_page)
-                yield d
-            elif self.start_idle_counter:
-                d = Deferred()
-                reactor.callLater(0.1, d.callback, None)
-                yield d
-                self.idle_ping += 1
-                if self.idle_ping == 300:
-                    break
-            else:
-                d = Deferred()
-                reactor.callLater(0.1, d.callback, None)
-                yield d
+            if sitemap_url:
+                self.add_sitemap_urls()
+            processed_site_map_url += 1
+            self.idle_ping = 0
         raise StopIteration
 
     def crawl(self):
@@ -170,7 +193,8 @@ class SiteSpider:
 
 def process_parameters():
     parser = argparse.ArgumentParser(description='A Simple website scrapper')
-    parser.add_argument("--url", help="the start url , defaults to the confog.ini url", default=START_URL)
+    parser.add_argument("--url", help="the start url , defaults to the config.ini url", default=START_URL)
+    parser.add_argument("--sitemap-url", dest="sitemap_url", help="the sitemap url ")
     parser.add_argument("--url-file", dest="url_file", help="File containing list of urls ", action="store")
     parser.add_argument('--jserrors', dest='testjs', action='store_true')
     parser.add_argument('--no-jserrors', dest='testjs', action='store_false')
@@ -255,6 +279,7 @@ if __name__ == "__main__":
 
     args = process_parameters()
     base_url = args.url
+    sitemap_url = args.sitemap_url
     enable_js_tests = args.testjs
     process_existing_urls = args.process_file
     url_list_file = args.url_file
@@ -266,7 +291,7 @@ if __name__ == "__main__":
         detect_js_and_resource_issues(url_list_file)
         sys.exit(0)
 
-    scrapper = SiteSpider(base_url)
+    scrapper = SiteSpider(base_url, sitemap_url)
     reactor.callLater(2, scrapper.crawl)
     reactor.run()
 
