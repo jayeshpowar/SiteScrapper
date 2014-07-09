@@ -72,8 +72,8 @@ class WebPage:
             response.headers.getRawHeaders('Content-Type', ''))
 
         if response.previousResponse is not None:
-            self.redirect_location = response.previousResponse.headers.getRawHeaders(
-                "location")
+            headers = response.previousResponse.headers.getRawHeaders("location")
+            self.redirect_location = headers[0] if headers else ''
 
         if response.code >= 404:
             raise Exception(
