@@ -13,11 +13,11 @@ from twisted.internet import reactor
 
 from config import DOMAINS_TO_BE_SKIPPED, START_URL, \
     MAX_CONCURRENT_REQUESTS_PER_SERVER, PHANTOM_JS_LOCATION, IDLE_PING_COUNT, \
-    ERROR_CODES
+    ERROR_CODES, DEFAULT_LOGGER_LEVEL
 from web_page import extract_domain, extract_base_site, WebPage
 
 
-logging.basicConfig(filemode='w', level=logging.INFO)
+logging.basicConfig(filemode='w', level=DEFAULT_LOGGER_LEVEL)
 handler = logging.FileHandler('scrapper.log')
 logger = logging.getLogger(__name__)
 logger.addHandler(handler)

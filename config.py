@@ -1,3 +1,5 @@
+import logging
+
 __author__ = 'jayesh'
 
 START_URL = 'http://www.appdynamics.com/'
@@ -17,3 +19,4 @@ PHANTOM_JS_LOCATION = '/usr/bin/phantomjs'
 PAGE_TIMEOUT = 30
 ERROR_CODES = [-1, 404, 500, 403]
 BROWSER_PROCESS_COUNT = 4
+DEFAULT_LOGGER_LEVEL = logging.INFO
