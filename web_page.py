@@ -12,10 +12,10 @@ from twisted.web.client import Agent, getPage, WebClientContextFactory, \
     BrowserLikeRedirectAgent
 from tldextract import extract
 
-from config import PAGE_TIMEOUT
+from config import PAGE_TIMEOUT, DEFAULT_LOGGER_LEVEL
 
 
-logging.basicConfig(filemode='w', filename='page.log', level=logging.INFO)
+logging.basicConfig(filemode='w', filename='page.log', level=DEFAULT_LOGGER_LEVEL)
 logger = logging.getLogger(__name__)
 
 
