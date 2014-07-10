@@ -91,6 +91,7 @@ class WebPage:
         raise Exception(failure.value)
 
     def format_link(self, href_value):
+        href_value = href_value.strip()
         if href_value.startswith('#'):
             link = self.url
         else:
