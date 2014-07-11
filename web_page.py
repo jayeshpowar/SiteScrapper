@@ -12,7 +12,7 @@ from twisted.web.client import Agent, getPage, WebClientContextFactory, \
     BrowserLikeRedirectAgent
 from tldextract import extract
 
-from config import PAGE_TIMEOUT, DEFAULT_LOGGER_LEVEL
+from config import PAGE_TIMEOUT, DEFAULT_LOGGER_LEVEL, HARD_CODED_LINKS, ERROR_CODES
 
 
 logging.basicConfig(filemode='w', filename='page.log', level=DEFAULT_LOGGER_LEVEL)
@@ -45,6 +45,7 @@ class WebPage:
     def __init__(self, url, parent, base_site, base_domain, domains_to_skip):
         self.url = '' if url is None else url
         # self.url = unicode(self.url).encode('utf-8')
+        self.encoded_url = self.url.encode('utf-8')
         self.base_domain = base_domain
         self.response_code = -1
         self.external_url = self.base_domain not in extract_domain(self.url)
@@ -56,6 +57,7 @@ class WebPage:
         self.content_type = "text/html"
         self.domains_to_skip = domains_to_skip
         self.redirect_location = ''
+        self.hardcoded_urls = set()
 
 
     def is_redirected_to_external_site(self):
@@ -75,7 +77,7 @@ class WebPage:
             headers = response.previousResponse.headers.getRawHeaders("location")
             self.redirect_location = headers[0] if headers else ''
 
-        if response.code >= 404:
+        if response.code in ERROR_CODES:
             raise Exception(
                 'Failed with error code {}'.format(response.code))
 
@@ -90,6 +92,17 @@ class WebPage:
         self.content_type = 'UNKNOWN'
         raise Exception(failure.value)
 
+    def process_hardcoded_url(self, href_link):
+        if href_link.startswith('http://') or href_link.startswith('https://'):
+            logger.debug("Identified and adding hardcoded url {} for {} ", href_link, self.encoded_url)
+            link_info = extract(href_link)
+            parsed_link = "{}.{}.{}".format(link_info.subdomain, link_info.domain, link_info.suffix)
+            if 'all' in HARD_CODED_LINKS:
+                self.hardcoded_urls.add(href_link)
+            else:
+                if parsed_link in HARD_CODED_LINKS:
+                    self.hardcoded_urls.add(href_link)
+
     def format_link(self, href_value):
         href_value = href_value.strip()
         if href_value.startswith('#'):
@@ -99,7 +112,7 @@ class WebPage:
                 if href_value.startswith("..") else href_value
             link = urlparse.urljoin(self.url, href_value, allow_fragments=False)
             link = link if 'javascript:void' not in href_value \
-                and not href_value.startswith('mailto') else None
+                           and not href_value.startswith('mailto') else None
         return link
 
     def process_get_response(self, response):
@@ -120,11 +133,12 @@ class WebPage:
 
             link_count = 0
             for href_value in dom.xpath('//a/@href'):
-                logger.debug("Entering for loop for for {}".format(encoded_url))
+                logger.debug("Entering for loop for for {} with href {}".format(self.encoded_url, href_value))
+                self.process_hardcoded_url(href_value)
                 # link = None
                 # if link_tag.has_attr('href'):
                 # href_value = link_tag['href']
-                #     link = self.format_link(href_value)
+                # link = self.format_link(href_value)
                 # else:
                 #     continue
                 link = self.format_link(href_value)
@@ -137,8 +151,8 @@ class WebPage:
                                                     link_info.suffix)
                     if parsed_link not in self.domains_to_skip:
                         link_page = WebPage(link, self, self.base_site,
-                                                  self.base_domain,
-                                                  self.domains_to_skip)
+                                            self.base_domain,
+                                            self.domains_to_skip)
                         self.links.add(link_page)
                         link_page.parent = self
                         link_count += 1

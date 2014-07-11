@@ -9,7 +9,6 @@ import sys
 
 from lxml import objectify
 import requests
-
 from twisted.internet import task
 from twisted.internet.defer import DeferredList, Deferred
 from twisted.internet import reactor
@@ -82,6 +81,20 @@ def print_pages_with_errors(is_external_page, page_set, file_name):
                 print("{}".format(page.url.encode('utf8')))
 
 
+def print_pages_with_hardcoded_links(page_set, file_name):
+    with open(file_name, 'w') as output_file:
+        for page in page_set:
+            if page.hardcoded_urls:
+                output_file.write(
+                    "\nExamined {} : \nHardcoded links found : {}\n".format(page.url.encode('utf8'),
+                                                                           len(page.hardcoded_urls)))
+                print("\nExamined {} : \nHardcoded links found : {}\n".format(page.url.encode('utf8'),
+                                                                             len(page.hardcoded_urls)))
+                for url in page.hardcoded_urls:
+                    output_file.write("{} \n".format(url.encode('utf8')))
+                    print("{}".format(url.encode('utf8')))
+
+
 class SiteSpider:
     def __init__(self, start_url, sitemap_url=None):
         self.visited_urls = set()
@@ -107,7 +120,8 @@ class SiteSpider:
         root = objectify.fromstring(val)
 
         for url in root.url:
-            page = WebPage(bytes(url.loc), self.base_site, self.base_site, self.base_domain, DOMAINS_TO_BE_SKIPPED)
+            page = WebPage(bytes(url.loc), next(iter(self.visited_urls)), self.base_site, self.base_domain,
+                           DOMAINS_TO_BE_SKIPPED)
             if page not in self.visited_urls and page not in self.non_visited_urls and page not in self.intermediate_urls:
                 print("Added {}".format(url.loc))
                 self.non_visited_urls.add(page)
@@ -189,6 +203,7 @@ class SiteSpider:
         """
         print_pages_with_errors(True, self.visited_urls, "broken_external_links.txt")
         print_pages_with_errors(False, self.visited_urls, "broken_internal_links.txt")
+        print_pages_with_hardcoded_links(self.visited_urls, "hardcoded_url_links.txt")
 
         print("\nTotal pages visited : {}\n".format(len(self.visited_urls)))
 

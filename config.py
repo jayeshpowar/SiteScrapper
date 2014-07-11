@@ -13,10 +13,12 @@ DOMAINS_TO_BE_SKIPPED = ['community.appdynamics.com',
                          'www.appdynamics.jp',
                          'www.appdynamics.es', 'www.appdynamics.hk',
                          'www.appdynamics.il', 'www.appdynamics.de',
-                         'www.appdynamics.it']
+                         'www.appdynamics.it', 'www.appdynamics.com']
 PHANTOM_JS_LOCATION = '/usr/bin/phantomjs'
 
 PAGE_TIMEOUT = 30
 ERROR_CODES = [-1, 404, 500, 403]
 BROWSER_PROCESS_COUNT = 4
 DEFAULT_LOGGER_LEVEL = logging.INFO
+
+HARD_CODED_LINKS = ['www.appdynamics.com', 'appdynamics.com']
