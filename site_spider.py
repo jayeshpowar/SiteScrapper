@@ -2,7 +2,7 @@ import argparse
 import json
 import multiprocessing
 import tempfile
-from threading import Lock
+from threading import Lock, Timer
 import subprocess
 import logging
 import sys
@@ -211,6 +211,11 @@ class SiteSpider:
         print_pages_to_file("all_external_pages.txt", True, self.visited_urls)
 
 
+def kill_phantom(proc, timeout):
+    timeout["value"] = True
+    proc.kill()
+
+
 def process_parameters():
     parser = argparse.ArgumentParser(description='A Simple website scrapper')
     parser.add_argument("--url", help="the start url , defaults to the config.ini url", default=START_URL)
@@ -230,6 +235,9 @@ def invoke_url_in_browser(file_name):
     params = [PHANTOM_JS_LOCATION, SCRIPT, file_name]
 
     p = subprocess.Popen(params, stdout=subprocess.PIPE, bufsize=1)
+    timeout = {"value": False}
+    timer = Timer(900, kill_phantom, [p, timeout])
+    timer.start()
 
     for line in iter(p.stdout.readline, b''):
         print("%s" % line)
@@ -252,7 +260,9 @@ def invoke_url_in_browser(file_name):
 
 
     p.communicate()
-    print("\n\nWrapping for {}\n\n".format(file_name))
+    timer.cancel()
+
+    print("\n\nWrapping for {} due to timeout ? {} \n\n".format(file_name, timeout['value']))
     return resources_state
 
 
