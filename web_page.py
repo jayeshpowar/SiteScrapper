@@ -94,7 +94,6 @@ class WebPage:
 
     def process_hardcoded_url(self, href_link):
         if href_link.startswith('http://') or href_link.startswith('https://'):
-            logger.debug("Identified and adding hardcoded url {} for {} ", href_link, self.encoded_url)
             link_info = extract(href_link)
             parsed_link = "{}.{}.{}".format(link_info.subdomain, link_info.domain, link_info.suffix)
             if 'all' in HARD_CODED_LINKS:
