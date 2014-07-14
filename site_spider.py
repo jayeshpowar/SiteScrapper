@@ -43,7 +43,7 @@ class Resource:
         return self
 
     def __str__(self):
-        str = '\n\n%s' % self.parent.encode('utf8')
+        str = '\n\nExamined %s' % self.parent.encode('utf8')
         errors = ("\nJavascript Errors : \n" + "\n".join(self.error)) if self.error else ""
         resources = ("\nBroken Resources : \n" + "\n".join(self.resource_issues)) if self.resource_issues else ""
         str += errors.encode('utf8')
