@@ -19,6 +19,8 @@ PHANTOM_JS_LOCATION = '/usr/bin/phantomjs'
 PAGE_TIMEOUT = 30
 ERROR_CODES = [-1, 404, 500, 403]
 BROWSER_PROCESS_COUNT = 4
-DEFAULT_LOGGER_LEVEL = logging.INFO
+DEFAULT_LOGGER_LEVEL = logging.DEBUG
 
+# Hard code link settings
 HARD_CODED_LINKS = ['www.appdynamics.com', 'appdynamics.com']
+HARD_CODED_LINK_EXCLUSIONS = ['www.appdynamics.com/info']

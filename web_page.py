@@ -12,7 +12,7 @@ from twisted.web.client import Agent, getPage, WebClientContextFactory, \
     BrowserLikeRedirectAgent
 from tldextract import extract
 
-from config import PAGE_TIMEOUT, DEFAULT_LOGGER_LEVEL, HARD_CODED_LINKS, ERROR_CODES
+from config import PAGE_TIMEOUT, DEFAULT_LOGGER_LEVEL, HARD_CODED_LINKS, ERROR_CODES, HARD_CODED_LINK_EXCLUSIONS
 
 
 logging.basicConfig(filemode='w', filename='page.log', level=DEFAULT_LOGGER_LEVEL)
@@ -100,7 +100,9 @@ class WebPage:
                 self.hardcoded_urls.add(href_link)
             else:
                 if parsed_link in HARD_CODED_LINKS:
-                    self.hardcoded_urls.add(href_link)
+                    for hard_coded_exclusion in HARD_CODED_LINK_EXCLUSIONS:
+                        if not hard_coded_exclusion in href_link:
+                            self.hardcoded_urls.add(href_link)
 
     def format_link(self, href_value):
         href_value = href_value.strip()
