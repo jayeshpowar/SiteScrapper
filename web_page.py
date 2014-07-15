@@ -43,8 +43,7 @@ class WebClientContextFactory(ClientContextFactory):
 
 class WebPage:
     def __init__(self, url, parent, base_site, base_domain, domains_to_skip):
-        self.url = '' if url is None else url
-        # self.url = unicode(self.url).encode('utf-8')
+        self.url = url if url else ''
         self.encoded_url = self.url.encode('utf-8')
         self.base_domain = base_domain
         self.response_code = -1
@@ -58,6 +57,7 @@ class WebPage:
         self.domains_to_skip = domains_to_skip
         self.redirect_location = ''
         self.hardcoded_urls = set()
+        self.failure_message = ''
 
 
     def is_redirected_to_external_site(self):
@@ -161,6 +161,7 @@ class WebPage:
                                                        self.url.encode('utf8'),
                                                        response.value))
         self.content_type = 'UNKNOWN'
+        self.failure_message = response.value
 
     def make_head_request(self):
         agent = BrowserLikeRedirectAgent(Agent(reactor))

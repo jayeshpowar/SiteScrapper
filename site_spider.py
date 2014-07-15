@@ -70,15 +70,19 @@ def print_pages_with_errors(is_external_page, page_set, file_name):
             pages.sort(key=lambda x: x.parent)
             parent_page = ''
             for page in pages:
+                failure_message_format = ''
                 if parent_page != page.parent.url:
                     parent_page = page.parent.url
                     code = str(error_code)
                     if error_code == -1:
                         code = '-1 (unknown)'
+                        failure_message_format = '[{}]'
                     output_file.write("\nExamined {} : \nPages with response Code {} : \n".format(parent_page.encode('utf8'), code))
                     print("\nExamined {} : \nPages with response Code {} :".format(parent_page.encode('utf8'), code))
-                output_file.write("{} \n".format(page.url.encode('utf8')))
-                print("{}".format(page.url.encode('utf8')))
+                failure_message = failure_message_format.format(
+                    page.failure_message) if failure_message_format else ''
+                output_file.write("{} {} \n".format(page.url.encode('utf8'), failure_message))
+                print("{} {} ".format(page.url.encode('utf8'), failure_message))
 
 
 def print_pages_with_hardcoded_links(page_set, file_name):
