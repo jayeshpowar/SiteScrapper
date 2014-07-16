@@ -71,6 +71,8 @@ def print_pages_with_errors(is_external_page, page_set, file_name):
             parent_page = ''
             for page in pages:
                 failure_message_format = ''
+                if not page.parent:
+                    continue
                 if parent_page != page.parent.url:
                     parent_page = page.parent.url
                     code = str(error_code)
