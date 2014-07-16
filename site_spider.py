@@ -31,15 +31,15 @@ universal_messages = []
 class Resource:
     def __init__(self, parent=''):
         self.parent = parent
-        self.error = list()
-        self.resource_issues = list()
+        self.error = set()
+        self.resource_issues = set()
 
     def add_error(self, error):
-        self.error.append(error)
+        self.error.add(error)
         return self
 
     def add_resource(self, resource):
-        self.resource_issues.append(resource)
+        self.resource_issues.add(resource)
         return self
 
     def __str__(self):
@@ -119,6 +119,7 @@ class SiteSpider:
         return page not in self.visited_urls and page not in self.non_visited_urls \
                and page not in self.intermediate_urls
 
+    # TODO : Fix the https handling properly
     def add_sitemap_urls(self):
         logger.debug("Adding sitemap urls as well for processing")
         response = requests.get(self.sitemap_url)
