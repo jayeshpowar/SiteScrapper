@@ -250,18 +250,18 @@ def invoke_url_in_browser(file_name):
         print("%s" % line)
         if "parent" in line and ("error" in line or "broken-resource" in line):
             universal_messages.append(line)
-
-            data = json.loads(line)
-            parent = data.get('parent')
-            error = data.get('error', '')
-            broken_resource = data.get('broken-resource', '')
-            if not resources_state.get(parent):
-                resources_state[parent] = Resource(parent)
-            if 'error' in line:
-                resource = resources_state[parent].add_error(error)
-                resources_state[parent] = resource
-            else:
-                resources_state[parent] = resources_state[parent].add_resource(broken_resource)
+            data = get_proper_data_from_stream(line)
+            if data:
+                parent = data.get('parent')
+                error = data.get('error', '')
+                broken_resource = data.get('broken-resource', '')
+                if not resources_state.get(parent):
+                    resources_state[parent] = Resource(parent)
+                if 'error' in line:
+                    resource = resources_state[parent].add_error(error)
+                    resources_state[parent] = resource
+                else:
+                    resources_state[parent] = resources_state[parent].add_resource(broken_resource)
                 # else:
                 # print("%s" % line)
 
@@ -272,6 +272,13 @@ def invoke_url_in_browser(file_name):
     print("\n\nWrapping for {} due to timeout ? {} \n\n".format(file_name, timeout['value']))
     return resources_state
 
+
+def get_proper_data_from_stream(strieamed_line):
+    try:
+        return json.loads(strieamed_line)
+    except Exception as json_error:
+        logger.debug("Skipped line {} for resource processing due to {} ".format(strieamed_line, json_error))
+        return None
 
 def detect_js_and_resource_issues(file_name):
     try:
