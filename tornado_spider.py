@@ -7,7 +7,7 @@ from lxml import objectify
 from tornado.gen import coroutine
 from tornado.httpclient import HTTPClient
 from tornado.ioloop import IOLoop
-from toro import JoinableQueue, BoundedSemaphore
+from toro import JoinableQueue, BoundedSemaphore, Lock
 
 from config import DOMAINS_TO_BE_SKIPPED, START_URL, \
     IMPLEMENTATION_CLIENT, MAX_CONCURRENT_REQUESTS_PER_SERVER
@@ -65,6 +65,7 @@ class TornadoSpider:
     def _crawl_web_page(self):
         while True:
             if len(self.intermediate_urls) < 5 and self.start_idle_counter:
+                print("Unprocessed urls : ")
                 for page in self.intermediate_urls:
                     print(u'>>>>>> %s ' % page.encoded_url)
             # print("Available Semaphore %s" % self.semaphore.counter)
@@ -110,7 +111,7 @@ class TornadoSpider:
                                                                        page.encoded_url))
 
     def _filter_visited_links(self, page):
-        return page not in self.visited_urls and page not in self.intermediate_urls
+        return page not in self.visited_urls and page not in self.intermediate_urls and page not in self.non_visited_urls
 
     def add_sitemap_urls(self, parent_page):
         logger.debug("Adding sitemap urls as well for processing")
@@ -136,10 +137,10 @@ class TornadoSpider:
             http_client.close()
 
     def _get_unique_non_visited_links(self, page):
-        # l = Lock()
-        # l.acquire()
+        l = Lock()
+        l.acquire()
         filtered_links = set(filter(self._filter_visited_links, page.links))
-        # l.release()
+        l.release()
         return filtered_links
 
     def process_web_page(self, web_page):
@@ -155,6 +156,7 @@ class TornadoSpider:
                 self.non_visited_urls.add(page)
                 self.page_queue.put(page)
                 self.added_count += 1
+                logger.debug("Added link-url %s " % page.encoded_url)
 
         self.start_idle_counter = True
 

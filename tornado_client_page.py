@@ -31,7 +31,8 @@ class TornadoClientPage(WebPage):
         logger.debug("Called %s for %s " % ('make_head_request', self.encoded_url))
         request = HTTPRequest(method='HEAD', url=self.url, request_timeout=PAGE_TIMEOUT, follow_redirects=True,
                               headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/535.1 "
-                                                     "(KHTML, like Gecko) Chrome/13.0.782.220 Safari/535.1"})
+                                                     "(KHTML, like Gecko) Chrome/13.0.782.220 Safari/535.1"},
+                              max_redirects=10)
         try:
             response = yield AsyncHTTPClient().fetch(request)
 
@@ -67,7 +68,8 @@ class TornadoClientPage(WebPage):
 
         request = HTTPRequest(method='GET', url=self.url, request_timeout=PAGE_TIMEOUT, follow_redirects=True,
                               headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/535.1 "
-                                                     "(KHTML, like Gecko) Chrome/13.0.782.220 Safari/535.1"})
+                                                     "(KHTML, like Gecko) Chrome/13.0.782.220 Safari/535.1"},
+                              max_redirects=10)
         try:
             response = yield AsyncHTTPClient().fetch(request)
         except Exception as ex:

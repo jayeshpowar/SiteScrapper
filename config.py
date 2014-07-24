@@ -7,9 +7,9 @@ MAX_CONCURRENT_REQUESTS_PER_SERVER = 50
 IDLE_PING_COUNT = 300
 # In case to skip a domain of format "http://example.com" give the domain name to skip as '.example.com'
 DOMAINS_TO_BE_SKIPPED = ['community.appdynamics.com',
-                         'docs.appdynamics.com',
-                         'appsphere.appdynamics.com',
-                         'liteforums.appdynamics.com',
+                         'docs.appdynamics.com', 'info.appdynamics.com',
+                         'appsphere.appdynamics.com', 'education.appdynamics.com',
+                         'liteforums.appdynamics.com', 'portal.appdynamics.com',
                          'litedocs.appdynamics.com', 'www.appdynamics.fr',
                          'www.appdynamics.jp', 'appdynamics.com',
                          'www.appdynamics.es', 'www.appdynamics.hk',

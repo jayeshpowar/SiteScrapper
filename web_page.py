@@ -69,10 +69,18 @@ class WebPage(object):
         spider.process_web_page(self)
 
     def __hash__(self):
-        return hash(self.url)
+        url = self.url
+        url = url[:-1] if url.endswith('/') else url
+        return hash(url.replace("https", 'http'))
 
     def __eq__(self, other):
-        return self.url.replace("https", 'http') == other.url.replace("https", 'http')
+        url = self.url
+        url = url[:-1] if url.endswith('/') else url
+
+        other_url = other.url
+        other_url = other_url[:-1] if other_url.endswith('/') else other_url
+
+        return url.replace("https", 'http') == other_url.replace("https", 'http')
 
     def __str__(self):
         return "Url: {}," \
