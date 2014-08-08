@@ -68,9 +68,9 @@ class TornadoSpider:
                 print("Unprocessed urls : ")
                 for page in self.intermediate_urls:
                     print(u'>>>>>> %s ' % page.encoded_url)
-            # print("Available Semaphore %s" % self.semaphore.counter)
+            # print(" Available Semaphore %s" % self.semaphore.counter)
             yield self.semaphore.acquire()
-            # print("0.Issued Semaphore %s  " % (self.semaphore.counter+1))
+            # print(" 0.Issued Semaphore %s  " % (self.semaphore.counter+1))
             self._fetch_page(self.semaphore.counter + 1)
             if len(self.intermediate_urls) < 5 and self.start_idle_counter:
                 print("Unprocessed urls : ")
