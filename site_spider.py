@@ -22,6 +22,7 @@ from web_page import WebPage
 
 
 
+
 # logging.basicConfig(filemode='w', level=DEFAULT_LOGGER_LEVEL)
 # handler = logging.FileHandler('scrapper.log')
 logger = logging.getLogger(__name__)
@@ -31,77 +32,11 @@ RESOURCES_STATE = dict()
 universal_messages = []
 
 
-class Resource:
-    def __init__(self, parent=''):
-        self.parent = parent
-        self.error = set()
-        self.resource_issues = set()
-
-    def add_error(self, error):
-        self.error.add(error)
-        return self
-
-    def add_resource(self, resource):
-        self.resource_issues.add(resource)
-        return self
-
-    def __str__(self):
-        str = '\n\nExamined %s' % self.parent.encode('utf8')
-        errors = ("\nJavascript Errors : \n" + "\n".join(self.error)) if self.error else ""
-        resources = ("\nBroken Resources : \n" + "\n".join(self.resource_issues)) if self.resource_issues else ""
-        str += errors.encode('utf8')
-        str += resources.encode('utf8')
-        return str
-
-
-def print_pages_to_file(file_name, identify_external, page_set,
-                        filter_function=None):
-    if not filter_function:
-        filter_function = lambda wp: wp.external_url == identify_external \
-                                     and wp.response_code not in ERROR_CODES \
-                                     and 'text/html' in wp.content_type
-    list_to_print = sorted(filter(filter_function, page_set))
-    with open(file_name, 'w') as output_file:
-        for page in list_to_print:
-            output_file.write("{}\n".format(page.url))
-
-
-def print_pages_with_errors(is_external_page, page_set, file_name):
-    with open(file_name, 'w') as output_file:
-        for error_code in ERROR_CODES:
-            pages = sorted(filter((lambda wp: wp.external_url == is_external_page and wp.response_code == error_code), page_set))
-            pages.sort(key=lambda x: x.parent)
-            parent_page = ''
-            for page in pages:
-                failure_message_format = ''
-                if not page.parent:
-                    continue
-                code = str(error_code)
-                if error_code == -1:
-                    code = '-1 (unknown)'
-                    failure_message_format = '[{}]'
-                if parent_page != page.parent.url:
-                    parent_page = page.parent.url
-                    output_file.write("\nExamined {} : \nPages with response Code {} : \n".format(parent_page.encode('utf8'), code))
-                    print("\nExamined {} : \nPages with response Code {} :".format(parent_page.encode('utf8'), code))
-                failure_message = failure_message_format.format(
-                    page.failure_message) if failure_message_format else ''
-                output_file.write("{} {} \n".format(page.url.encode('utf8'), failure_message))
-                print("{} {} ".format(page.url.encode('utf8'), failure_message))
-
-
-def print_pages_with_hardcoded_links(page_set, file_name):
-    with open(file_name, 'w') as output_file:
-        for page in page_set:
-            if page.hardcoded_urls:
-                output_file.write(
-                    "\nExamined {} : \nHardcoded links found : {}\n".format(page.url.encode('utf8'),
-                                                                           len(page.hardcoded_urls)))
-                print("\nExamined {} : \nHardcoded links found : {}\n".format(page.url.encode('utf8'),
-                                                                             len(page.hardcoded_urls)))
-                for url in page.hardcoded_urls:
-                    output_file.write("{} \n".format(url.encode('utf8')))
-                    print("{}".format(url.encode('utf8')))
+def _get_client_page(*args):
+    if IMPLEMENTATION_CLIENT == 'tornado':
+        return TornadoClientPage(*args)
+    else:
+        return WebPage(args)
 
 
 class SiteSpider:
