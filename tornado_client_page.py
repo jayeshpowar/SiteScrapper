@@ -99,10 +99,10 @@ class TornadoClientPage(WebPage):
                 link_count = 0
                 for href_value in dom.xpath('//a/@href'):
                     href_value = decode_to_unicode(href_value)
-                    # logger.debug(u"Entering for loop for for {} with href {}".format(self.encoded_url, href_value ))
+                    logger.debug(u"Entering for loop for for {} with href {}".format(self.encoded_url, href_value))
                     self._process_hardcoded_url(href_value)
                     link = self._format_link(href_value)
-                    # logger.debug(u"obtained link  object{} for {}".format(link, self.encoded_url))
+                    logger.debug(u"obtained link  object{} for {}".format(link, self.encoded_url))
 
                     if link:
                         parsed_link = obtain_domain_with_subdomain_for_page(self.url)
@@ -124,8 +124,3 @@ class TornadoClientPage(WebPage):
             link = urlparse.urljoin(self.url, href_value, allow_fragments=False)
             link = link if 'javascript:void' not in href_value and not href_value.startswith('mailto') else None
         return decode_to_unicode(link)
-
-        # if __name__ == '__main__':
-        # url = 'http://www.appdynamics23.com'
-        # IOLoop.instance().call_later(2, TornadoClientPage(url, None, url, extract_domain(url), 'www.yahoo.com').make_head_request())
-        #     IOLoop.instance().start()
