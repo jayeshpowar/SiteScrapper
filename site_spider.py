@@ -73,12 +73,12 @@ def print_pages_with_errors(is_external_page, page_set, file_name):
                 failure_message_format = ''
                 if not page.parent:
                     continue
+                code = str(error_code)
+                if error_code == -1:
+                    code = '-1 (unknown)'
+                    failure_message_format = '[{}]'
                 if parent_page != page.parent.url:
                     parent_page = page.parent.url
-                    code = str(error_code)
-                    if error_code == -1:
-                        code = '-1 (unknown)'
-                        failure_message_format = '[{}]'
                     output_file.write("\nExamined {} : \nPages with response Code {} : \n".format(parent_page.encode('utf8'), code))
                     print("\nExamined {} : \nPages with response Code {} :".format(parent_page.encode('utf8'), code))
                 failure_message = failure_message_format.format(
