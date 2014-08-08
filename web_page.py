@@ -1,7 +1,6 @@
 import logging
 
 from tornado.httpclient import AsyncHTTPClient
-from twisted.internet.ssl import ClientContextFactory
 from tldextract import extract
 
 from config import DEFAULT_LOGGER_LEVEL, HARD_CODED_LINKS, HARD_CODED_LINK_EXCLUSIONS
@@ -14,18 +13,12 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.FileHandler('page.log', mode='w'))
 
 
-class WebClientContextFactory(ClientContextFactory):
-    def getContext(self, hostname, port):
-        return ClientContextFactory.getContext(self)
-
-
 class WebPage(object):
     def __init__(self, url, parent, base_site, base_domain, domains_to_skip):
         self.url = decode_to_unicode(url) if url is not None else decode_to_unicode('')
         self.encoded_url = decode_to_unicode(self.url)
         self.base_domain = base_domain
         self.response_code = -1
-        # self.external_url = self.base_domain not in extract_domain(self.url)
         self.errors = []
         self.links = set()
         self.visited = False
