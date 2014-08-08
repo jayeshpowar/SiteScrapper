@@ -28,7 +28,6 @@ errors. In such scenarios modify the max concurrent connections settings in the
 
 
 
-
 Configurations
 ==============
 Certain configurations for the scrapper can be done via the scrapper *config.py*
