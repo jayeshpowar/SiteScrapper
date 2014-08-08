@@ -14,11 +14,11 @@ Start scrapping  by executing
 The current version of the code is using python 2.7 .
 To scrape the site using the twisted version of the library execute :
 
-**python site_scrapper.py --url='http://www.example.com'**
+**python tornado_spider.py --url='http://www.example.com'**
 
 for javascript errors detection ( takes too much time )
 
-**python site_scrapper.py --jserrors --url='http://www.example.com'**
+**python tornado_spider.py --jserrors --url='http://www.example.com'**
 
 
 The twisted version spawns quite large number of connections on the server
