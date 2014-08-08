@@ -1,28 +1,31 @@
 import argparse
-import json
-import multiprocessing
-import tempfile
-from threading import Lock, Timer
-import subprocess
+from threading import Lock
 import logging
 import sys
 
 from lxml import objectify
-import requests
-from twisted.internet import task
-from twisted.internet.defer import DeferredList, Deferred
-from twisted.internet import reactor
+from tornado import gen
+from tornado.httpclient import HTTPClient, HTTPError
+from tornado.ioloop import IOLoop
 
 from config import DOMAINS_TO_BE_SKIPPED, START_URL, \
-    MAX_CONCURRENT_REQUESTS_PER_SERVER, PHANTOM_JS_LOCATION, IDLE_PING_COUNT, \
-    ERROR_CODES, DEFAULT_LOGGER_LEVEL
-from web_page import extract_domain, extract_base_site, WebPage
+    IDLE_PING_COUNT, IMPLEMENTATION_CLIENT
+from resource_issue_detector import detect_js_and_resource_issues
+from tornado_client_page import TornadoClientPage
+from util import print_pages_with_errors, print_pages_with_hardcoded_links, print_pages_to_file, extract_domain, \
+    extract_base_site
+from web_page import WebPage
 
 
-logging.basicConfig(filemode='w', level=DEFAULT_LOGGER_LEVEL)
-handler = logging.FileHandler('scrapper.log')
+
+
+
+
+
+# logging.basicConfig(filemode='w', level=DEFAULT_LOGGER_LEVEL)
+# handler = logging.FileHandler('scrapper.log')
 logger = logging.getLogger(__name__)
-logger.addHandler(handler)
+# logger.addHandler(handler)
 
 RESOURCES_STATE = dict()
 universal_messages = []
@@ -108,80 +111,103 @@ class SiteSpider:
         self.logger = logging.getLogger(__name__)
         self.base_domain = extract_domain(start_url)
         self.base_site = extract_base_site(start_url)
-        self.non_visited_urls = {WebPage(start_url, None, start_url, self.base_domain, DOMAINS_TO_BE_SKIPPED)}
+        self.non_visited_urls = {
+            _get_client_page(start_url, None, start_url, self.base_domain, DOMAINS_TO_BE_SKIPPED)}
         self.added_count = 1
         self.idle_ping = 0
-        self.coop = task.Cooperator()
+        # self.coop = task.Cooperator()
         self.start_idle_counter = False
         self.sitemap_url = '{}/sitemap.xml'.format(self.base_site) if not sitemap_url else sitemap_url
 
-    def filter_visited_links(self, page):
+    def _filter_visited_links(self, page):
         return page not in self.visited_urls and page not in self.non_visited_urls \
                and page not in self.intermediate_urls
 
     # TODO : Fix the https handling properly
     def add_sitemap_urls(self):
         logger.debug("Adding sitemap urls as well for processing")
-        response = requests.get(self.sitemap_url)
-        val = bytes(response.text)
-        root = objectify.fromstring(val)
+        # response = requests.get(self.sitemap_url)
+
+
+        http_client = HTTPClient()
+        try:
+            response = http_client.fetch(self.sitemap_url)
+            val = bytes(response.body)
+            root = objectify.fromstring(val)
+        except HTTPError as e:
+            print "Error:", e
+        http_client.close()
 
         for url in root.url:
-            page = WebPage(bytes(url.loc), next(iter(self.visited_urls)), self.base_site, self.base_domain,
-                           DOMAINS_TO_BE_SKIPPED)
-            if page not in self.visited_urls and page not in self.non_visited_urls and page not in self.intermediate_urls:
+            page = _get_client_page(bytes(url.loc), next(iter(self.visited_urls)), self.base_site,
+                                    self.base_domain, DOMAINS_TO_BE_SKIPPED)
+            if page not in self.visited_urls and page not in self.non_visited_urls \
+                    and page not in self.intermediate_urls:
                 print("Added {}".format(url.loc))
                 self.non_visited_urls.add(page)
                 self.added_count += 1
 
-    def get_unique_non_visited_links(self, page):
+    def _get_unique_non_visited_links(self, page):
         l = Lock()
         l.acquire()
-        filtered_links = set(filter(self.filter_visited_links, page.links))
+        filtered_links = set(filter(self._filter_visited_links, page.links))
         l.release()
         return filtered_links
 
-    def process_web_page(self, resp, web_page):
+    def process_web_page(self, web_page):
         logger.debug("Called {} for {}".format('process_web_page', unicode(web_page.url).encode("utf-8")))
         self.visited_urls.add(web_page)
         self.intermediate_urls.discard(web_page)
-        unique_links = self.get_unique_non_visited_links(web_page)
+        unique_links = self._get_unique_non_visited_links(web_page)
         self.non_visited_urls = self.non_visited_urls.union(unique_links)
         self.added_count += len(unique_links)
         self.start_idle_counter = True
 
+    # @coroutine
     def generate_urls_to_visit(self):
         processed_site_map_url = 0
         while processed_site_map_url < 2:
             while self.idle_ping < IDLE_PING_COUNT:
-                print "Total urls added :  {} , Total urls visited : {} , Total urls in process : {}  \r".format(
-                    self.added_count, len(self.visited_urls), len(self.intermediate_urls))
+                if len(self.visited_urls) > 0:
+                    print "Total urls added :  {} , Total urls visited : {} , Total urls in process : {}  \r".format(
+                        self.added_count, len(self.visited_urls), len(self.intermediate_urls))
 
-                logger.debug(
-                    "Total urls added :  {} , Total urls visited : {} , Total urls in process : {} ping {} \r".format(
-                        self.added_count, len(self.visited_urls), len(self.intermediate_urls), self.idle_ping))
-
+                    logger.debug(
+                        "Total urls added :  {} , Total urls visited : {} , Total urls in process : {} ping {} \r"
+                        .format(self.added_count, len(self.visited_urls), len(self.intermediate_urls),
+                                self.idle_ping))
 
                 if len(self.non_visited_urls) > 0:
                     self.idle_ping = 0
                     web_page = self.non_visited_urls.pop()
                     self.intermediate_urls.add(web_page)
-                    d = web_page.process()
-                    d.addCallback(self.process_web_page, web_page)
-                    yield d
+                    yield web_page
+                    # self.start_idle_counter = True
                 elif self.start_idle_counter:
-                    d = Deferred()
-                    reactor.callLater(0.1, d.callback, None)
-                    yield d
+                    # d = Deferred()
+                    # reactor.callLater(0.1, d.callback, None)
+                    # yield d
                     self.idle_ping += 1
                     if self.idle_ping == IDLE_PING_COUNT:
                         break
-                else:
-                    d = Deferred()
-                    reactor.callLater(0.1, d.callback, None)
-                    yield d
+                        # else:
+                        # d = Deferred()
+                        # reactor.callLater(0.1, d.callback, None)
+                        #     yield d
 
-            if sitemap_url:
+                        # elif self.start_idle_counter:
+                        #     d = Deferred()
+                        #     reactor.callLater(0.1, d.callback, None)
+                        #     yield d
+                        #     self.idle_ping += 1
+                        #     if self.idle_ping == IDLE_PING_COUNT:
+                        #         break
+                        # else:
+                        #     d = Deferred()
+                        #     reactor.callLater(0.1, d.callback, None)
+                        #     yield d
+
+            if self.sitemap_url:
                 self.add_sitemap_urls()
             processed_site_map_url += 1
             self.idle_ping = 0
@@ -190,18 +216,29 @@ class SiteSpider:
 
     def crawl(self):
         logger.debug("Called {}".format('crawl'))
-        deferred_list = []
-        coop = task.Cooperator()
-        work = self.generate_urls_to_visit()
-        for i in xrange(MAX_CONCURRENT_REQUESTS_PER_SERVER):
-            d = coop.coiterate(work)
-            deferred_list.append(d)
-        dl = DeferredList(deferred_list)
-        dl.addCallback(self.wrap_up)
+        # deferred_list = []
+        # coop = task.Cooperator()
+        page_generator = self.generate_urls_to_visit()
+        # page_generator.send(None)
+        for page in page_generator:
+            result = gen.Task(page.process(self))
+
+
+
+
+            # print('>>>> %s/ '  %result)
+
+
+            # for i in xrange(MAX_CONCURRENT_REQUESTS_PER_SERVER):
+            # d = coop.coiterate(work)
+            # deferred_list.append(d)
+            # dl = DeferredList(deferred_list)
+            # dl.addCallback(self.wrap_up)
 
     def wrap_up(self, resp):
         self.print_stats()
-        reactor.stop()
+        IOLoop.stop()
+        # reactor.stop()
 
     def print_stats(self):
         """
@@ -218,11 +255,6 @@ class SiteSpider:
         print_pages_to_file("all_external_pages.txt", True, self.visited_urls)
 
 
-def kill_phantom(proc, timeout):
-    timeout["value"] = True
-    proc.kill()
-
-
 def process_parameters():
     parser = argparse.ArgumentParser(description='A Simple website scrapper')
     parser.add_argument("--url", help="the start url , defaults to the config.ini url", default=START_URL)
@@ -233,90 +265,6 @@ def process_parameters():
     parser.add_argument('--process-exisitng-urls', dest='process_file', action='store')
     parser.set_defaults(testjs=False)
     return parser.parse_args()
-
-
-def invoke_url_in_browser(file_name):
-    resources_state = dict()
-    print("\n\nIdentifying the javascript and page loading errors for {}\n\n".format(file_name))
-    SCRIPT = 'single_url_invoker.js'
-    params = [PHANTOM_JS_LOCATION, SCRIPT, file_name]
-
-    p = subprocess.Popen(params, stdout=subprocess.PIPE, bufsize=1)
-    timeout = {"value": False}
-    timer = Timer(900, kill_phantom, [p, timeout])
-    timer.start()
-
-    for line in iter(p.stdout.readline, b''):
-        print("%s" % line)
-        if "parent" in line and ("error" in line or "broken-resource" in line):
-            universal_messages.append(line)
-            data = get_proper_data_from_stream(line)
-            if data:
-                parent = data.get('parent')
-                error = data.get('error', '')
-                broken_resource = data.get('broken-resource', '')
-                if not resources_state.get(parent):
-                    resources_state[parent] = Resource(parent)
-                if 'error' in line:
-                    resource = resources_state[parent].add_error(error)
-                    resources_state[parent] = resource
-                else:
-                    resources_state[parent] = resources_state[parent].add_resource(broken_resource)
-                # else:
-                # print("%s" % line)
-
-
-    p.communicate()
-    timer.cancel()
-
-    print("\n\nWrapping for {} due to timeout ? {} \n\n".format(file_name, timeout['value']))
-    return resources_state
-
-
-def get_proper_data_from_stream(strieamed_line):
-    try:
-        return json.loads(strieamed_line)
-    except Exception as json_error:
-        logger.debug("Skipped line {} for resource processing due to {} ".format(strieamed_line, json_error))
-        return None
-
-def detect_js_and_resource_issues(file_name):
-    try:
-        with open(file_name) as f:
-            content = f.readlines()
-
-        pool_size = 3 if multiprocessing.cpu_count() * 2 > 3 else multiprocessing.cpu_count() * 2
-        print("Breaking original url list file into {} files".format(pool_size))
-
-        prev_count = 0
-        offset = len(content) / pool_size
-        file_list = []
-        file_handles = []
-        for index in range(pool_size):
-            init_count = prev_count
-            prev_count += offset
-            list_to_print = content[init_count:prev_count]
-            temp = tempfile.NamedTemporaryFile(mode='w+t')
-            temp.writelines(list_to_print)
-            temp.seek(0)
-            file_list.append(temp.name)
-            file_handles.append(temp)
-            if prev_count >= len(content):
-                break
-
-        pool = multiprocessing.Pool(processes=pool_size)
-        result = pool.map(invoke_url_in_browser, sorted(file_list))
-
-        with open("js_and_broken_resources.txt", 'w') as output_file:
-            for resource_dict in result:
-                for parent, resource in resource_dict.iteritems():
-                    # print('{}\nErrors : \n{}\nBroken-Resources : \n{}'.format(parent, "\n".join(resource.error), "\n".join(resource.resource_issues)))
-                    # output_file.write('{}\nErrors : \n{}\nBroken-Resources : \n{}'.format(parent, "\n".join(resource.error), "\n".join(resource.resource_issues)))
-                    print(resource)
-                    output_file.write(str(resource))
-
-    finally:
-        [file_handle.close() for file_handle in file_handles]
 
 
 if __name__ == "__main__":
@@ -336,8 +284,15 @@ if __name__ == "__main__":
         sys.exit(0)
 
     scrapper = SiteSpider(base_url, sitemap_url)
-    reactor.callLater(2, scrapper.crawl)
-    reactor.run()
+    # if IMPLEMENTATION_CLIENT == 'twisted':
+    # reactor.callLater(4, scrapper.crawl)
+    # reactor.callLater(3, IOLoop.instance().start)
+    # reactor.run()
+    IOLoop.instance().call_later(2, scrapper.crawl)
+    IOLoop.instance().start()
+    # else:
+    # IOLoop.instance().call_later()
+    # tornado.ioloop.IOLoop.instance().start()
 
     if enable_js_tests:
         detect_js_and_resource_issues("all_internal_pages.txt")
