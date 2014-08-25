@@ -51,6 +51,7 @@ class TornadoSpider:
         self.page_queue = JoinableQueue()
         self.semaphore = BoundedSemaphore(self.max_concurrent_connections)
         self.start = time.time()
+        self.skip_count = 0
 
 
     @coroutine
@@ -84,6 +85,11 @@ class TornadoSpider:
             page = yield self.page_queue.get()
             if page in self.visited_urls or page in self.intermediate_urls:
                 return
+            if page.skip_page():
+                self.skip_count += 1
+                logger.debug("Skipped {} " % page.url)
+                return
+
             logger.debug(
                 u"1.Sempahore in use> %s int.count %s for %s" % (semaphore_count, len(self.intermediate_urls),
                                                                  page.encoded_url))
@@ -94,12 +100,15 @@ class TornadoSpider:
             if get_response:
                 page.process_get_response(get_response)
             print(
-                u"Total urls added :  {} , Total urls visited : {} , Total urls in process : {} semaphore used : {} " \
-                .format(self.added_count, len(self.visited_urls), len(self.intermediate_urls), semaphore_count))
+                u"Total urls added :  {} , Total urls visited : {} , Total urls in process : {} Skipped : {},"
+                u" semaphore used : {} " \
+                .format(self.added_count, len(self.visited_urls), len(self.intermediate_urls), self.skip_count,
+                        semaphore_count))
 
             logger.debug(
-                u"Total urls added :  {} , Total urls visited : {} , Total urls in process : {} semaphore {} \r"
-                .format(self.added_count, len(self.visited_urls), len(self.intermediate_urls),
+                u"Total urls added :  {} , Total urls visited : {} , Total urls in process : {} Skipped : {}, "
+                u"semaphore {}"
+                .format(self.added_count, len(self.visited_urls), len(self.intermediate_urls), self.skip_count,
                         self.semaphore.counter))
         except Exception as ex:
             logger.debug(ex)

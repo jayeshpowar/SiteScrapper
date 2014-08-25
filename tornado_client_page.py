@@ -105,7 +105,7 @@ class TornadoClientPage(WebPage):
                     logger.debug(u"obtained link  object{} for {}".format(link, self.encoded_url))
 
                     if link:
-                        parsed_link = obtain_domain_with_subdomain_for_page(self.url)
+                        parsed_link = obtain_domain_with_subdomain_for_page(link)
 
                         if parsed_link not in self.domains_to_skip:
                             link_page = TornadoClientPage(link, self, self.base_site, self.base_domain,

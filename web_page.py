@@ -3,7 +3,7 @@ import logging
 from tornado.httpclient import AsyncHTTPClient
 from tldextract import extract
 
-from config import DEFAULT_LOGGER_LEVEL, HARD_CODED_LINKS, HARD_CODED_LINK_EXCLUSIONS
+from config import DEFAULT_LOGGER_LEVEL, HARD_CODED_LINKS, HARD_CODED_LINK_EXCLUSIONS, URL_SEGMENTS_TO_SKIP
 from util import extract_domain, decode_to_unicode, obtain_domain_with_subdomain_for_page
 
 
@@ -41,6 +41,19 @@ class WebPage(object):
             if parsed_link == skipped_domain:
                 return False
         return True
+
+    def skip_page(self):
+        parsed_link = obtain_domain_with_subdomain_for_page(self.url)
+
+        for skipped_domain in self.domains_to_skip:
+            if parsed_link == skipped_domain:
+                return True
+
+        for segment_to_skip in URL_SEGMENTS_TO_SKIP:
+            if segment_to_skip in self.url:
+                return True
+
+        return False
 
     def _process_hardcoded_url(self, href_link):
         if href_link.startswith(u'http://') or href_link.startswith(u'https://'):

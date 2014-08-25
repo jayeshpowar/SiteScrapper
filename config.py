@@ -11,10 +11,12 @@ DOMAINS_TO_BE_SKIPPED = ['community.appdynamics.com',
                          'appsphere.appdynamics.com', 'education.appdynamics.com',
                          'liteforums.appdynamics.com', 'portal.appdynamics.com',
                          'litedocs.appdynamics.com', 'www.appdynamics.fr',
-                         'www.appdynamics.jp', 'appdynamics.com',
+                         'www.appdynamics.jp',
                          'www.appdynamics.es', 'www.appdynamics.hk',
                          'www.appdynamics.il', 'www.appdynamics.de',
-                         'www.appdynamics.it', 'www.appdynamics.com']
+                         'www.appdynamics.it']
+
+URL_SEGMENTS_TO_SKIP = ['/blog/']
 PHANTOM_JS_LOCATION = '/usr/bin/phantomjs'
 
 PAGE_TIMEOUT = 30
