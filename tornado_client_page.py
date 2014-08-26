@@ -53,7 +53,8 @@ class TornadoClientPage(WebPage):
 
             self.response_code = response.code
             self.content_type = u"".join(response.headers.get('Content-Type', ''))
-            if self.is_page_internal() and u'text/html' in self.content_type:
+            effective_url = response.effective_url if response.effective_url else self.url
+            if self.is_page_internal(effective_url) and u'text/html' in self.content_type:
                 get_response = yield self._make_get_request()
                 raise Return(get_response)
             else:

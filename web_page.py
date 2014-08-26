@@ -31,15 +31,12 @@ class WebPage(object):
         self.failure_message = decode_to_unicode('')
         AsyncHTTPClient.configure("tornado.curl_httpclient.CurlAsyncHTTPClient")
 
-    def is_page_internal(self):
-        if self.base_domain not in extract_domain(self.url):
+    def is_page_internal(self, url=None):
+        if not url:
+            url = self.url
+
+        if self.base_domain not in extract_domain(url):
             return False
-
-        parsed_link = obtain_domain_with_subdomain_for_page(self.url)
-
-        for skipped_domain in self.domains_to_skip:
-            if parsed_link == skipped_domain:
-                return False
         return True
 
     def skip_page(self):
