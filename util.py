@@ -36,58 +36,117 @@ def extract_domain(url):
     return domain
 
 
-def print_pages_to_file(file_name, identify_external, page_set, filter_function=None):
+def print_pages_to_file(file_name, identify_external, page_set, filter_function=None,
+                        print_parents=False):
     if not filter_function:
-        filter_function = lambda wp: wp.is_page_internal() != identify_external \
+        filter_function = lambda wp: wp.external == identify_external \
                                      and wp.response_code not in ERROR_CODES \
                                      and 'text/html' in wp.content_type
     list_to_print = sorted(filter(filter_function, page_set))
-    with open(file_name, 'w') as output_file:
-        for page in list_to_print:
-            output_file.write("{}\n".format(page.url))
 
+    if list_to_print:
+        print("Pages to be written %s" % str(len(list_to_print)))
+        with open(file_name, 'w') as output_file:
+            for page in list_to_print:
+                __write_line_to_file(output_file, page, print_parents=print_parents)
+                # try:
+                # output_file.write("{}\n".format(page.encoded_url))
+                # except Exception as e:
+                #     logger.error("Error printing url", e)
 
+# TODO : Sort the page set directly instead of relying on
 def print_pages_with_errors(is_external_page, page_set, file_name):
     with open(file_name, 'w') as output_file:
         for error_code in ERROR_CODES:
+
+            if is_external_page:
+                for page in page_set:
+                    for external_child in page.external_child_pages:
+                        lambda pg: pg.external_child_pages
+
+            pages = sorted(filter((lambda wp: wp.response_code in ERROR_CODES), page_set))
+            # logger.debug("SORTED PAGES LENGTH FOR {} pages is {}".format(is_external_page, len(pages)))
+            # print("SORTED PAGES LENGTH FOR {} pages is {}".format(is_external_page,len(pages)))
+            # pages.sort(key=lambda x: x.parent.url if x.parent else x.url)
+            #
+            # logger.debug("Another SORTED PAGES LENGTH FOR {} pages is {}".format(is_external_page, len(pages)))
+            # print("Another SORTED PAGES LENGTH FOR {} pages is {}".format(is_external_page,len(pages)))
+
+            parent_page = None
+            for page in page_set:
+                failure_message_format = ''
+                if not page.parent:
+                    continue
+                if parent_page != page.parent:
+                    parent_page = page.parent
+                    code = str(error_code)
+                    if error_code == -1:
+                        code = '-1 (unknown)'
+                        failure_message_format = '[{}]'
+                    __write_line_to_file(output_file,
+                                         line_to_write="\nExamined {} : \nPages with response Code {} : \n"
+                                         .format(parent_page.encoded_url, code))
+                    # output_file.write(
+                    # "\nExamined {} : \nPages with response Code {} : \n".format(parent_page.encoded_url, code))
+                    # print(
+                    # "\nExamined {} : \nPages with response Code {} :".format(parent_page.encode('utf8'), code))
+                failure_message = failure_message_format.format(page.failure_message) if failure_message_format else ''
+                output_file.write("{} {} \n".format(page.encoded_url, failure_message))
+
+    with open(file_name, 'w') as output_file:
+        for error_code in ERROR_CODES:
             pages = sorted(
-                filter((lambda wp: wp.is_page_internal() != is_external_page and wp.response_code == error_code),
+                filter((lambda wp: wp.external == is_external_page and wp.response_code == error_code),
                        page_set))
-            pages.sort(key=lambda x: x.parent)
-            parent_page = ''
+            logger.debug("SORTED PAGES LENGTH FOR {} pages is {}".format(is_external_page, len(pages)))
+            print("SORTED PAGES LENGTH FOR {} pages is {}".format(is_external_page, len(pages)))
+            pages.sort(key=lambda x: x.parent.url if x.parent else x.url)
+
+            logger.debug("Another SORTED PAGES LENGTH FOR {} pages is {}".format(is_external_page, len(pages)))
+            print("Another SORTED PAGES LENGTH FOR {} pages is {}".format(is_external_page, len(pages)))
+            parent_page = None
             for page in pages:
                 failure_message_format = ''
                 if not page.parent:
                     continue
-                if parent_page != page.parent.url:
-                    parent_page = page.parent.url
+                if parent_page != page.parent:
+                    parent_page = page.parent
                     code = str(error_code)
                     if error_code == -1:
                         code = '-1 (unknown)'
                         failure_message_format = '[{}]'
                     output_file.write(
-                        "\nExamined {} : \nPages with response Code {} : \n".format(parent_page.encode('utf8'),
-                                                                                    code))
-                    print(
-                    "\nExamined {} : \nPages with response Code {} :".format(parent_page.encode('utf8'), code))
-                failure_message = failure_message_format.format(
-                    page.failure_message) if failure_message_format else ''
-                output_file.write("{} {} \n".format(page.url.encode('utf8'), failure_message))
-                print("{} {} ".format(page.url.encode('utf8'), failure_message))
+                        "\nExamined {} : \nPages with response Code {} : \n".format(parent_page.encoded_url, code))
+                    # print(
+                    # "\nExamined {} : \nPages with response Code {} :".format(parent_page.encode('utf8'), code))
+                failure_message = failure_message_format.format(page.failure_message) if failure_message_format else ''
+                output_file.write("{} {} \n".format(page.encoded_url, failure_message))
+                # print("{} {} ".format(page.url.encode('utf8'), failure_message))
 
 
 def print_pages_with_hardcoded_links(page_set, file_name):
     with open(file_name, 'w') as output_file:
         for page in page_set:
-            if page.hardcoded_urls:
-                output_file.write(
-                    "\nExamined {} : \nHardcoded links found : {}\n".format(page.url.encode('utf8'),
-                                                                            len(page.hardcoded_urls)))
-                print("\nExamined {} : \nHardcoded links found : {}\n".format(page.url.encode('utf8'),
-                                                                              len(page.hardcoded_urls)))
-                for url in page.hardcoded_urls:
-                    output_file.write("{} \n".format(url.encode('utf8')))
-                    print("{}".format(url.encode('utf8')))
+            if len(page.hardcoded_child_pages) > 0:
+                line = "\nExamined {} : \nHardcoded links found : {}\n".format(page.encoded_url,
+                                                                               len(page.hardcoded_child_pages))
+
+                __write_line_to_file(output_file, line_to_write=line)
+                for hard_coded_page in page.hardcoded_child_pages:
+                    __write_line_to_file(output_file, hard_coded_page)
+
+
+def __write_line_to_file(output_file, page=None, line_to_write=None, print_parents=False):
+    try:
+        line = page.encoded_url if not line_to_write and page else line_to_write
+        output_file.write("{}\n".format(line))
+        if page:
+            if print_parents and page.parents:
+                output_file.write("Referenced By :\n")
+                for parent in page.parents:
+                    output_file.write("\t\t{}\n".format(parent.url))
+    except Exception as e:
+        logger.error("Error printing url", e)
 
 
 def decode_to_unicode(value):
@@ -103,3 +162,4 @@ def obtain_domain_with_subdomain_for_page(url):
         parsed_link = u"{}.{}".format(link_info.domain, link_info.suffix)
 
     return parsed_link
+
