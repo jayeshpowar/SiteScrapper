@@ -143,15 +143,13 @@ class Spider:
     def print_stats(self):
         # TODO : Specify parent specific external pages
 
-        # print_pages_with_errors(True, self.inventory.visited_pages, "broken_external_links.txt")
-        # print_pages_with_errors(False, self.inventory.visited_pages, "broken_internal_links.txt")
+        print_pages_with_errors(True, self.inventory.visited_pages, "broken_external_links.txt")
+        print_pages_with_errors(False, self.inventory.visited_pages, "broken_internal_links.txt")
         print_pages_with_hardcoded_links(self.inventory.visited_pages, "hardcoded_url_links.txt")
 
         logger.info("\nTotal pages visited >> : {}\n".format(len(self.inventory.visited_pages)))
         print_pages_to_file("all_internal_pages.txt", False, self.inventory.visited_pages)
         print_pages_to_file("all_external_pages.txt", True, self.inventory.visited_pages,  print_parents=True)
-        # print_pages_to_file("experimental_in_pages.txt", False, self.inventory.visited_pages)
-        # print_pages_to_file("experimental_ex_pages.txt", True, self.inventory.visited_pages)
 
 
 def process_parameters():
