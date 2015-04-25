@@ -5,13 +5,13 @@ from tornado import gen
 from tornado.gen import Return
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError
 
-from config import PAGE_TIMEOUT, DOMAINS_TO_BE_SKIPPED
+from config import PAGE_TIMEOUT, DOMAINS_TO_BE_SKIPPED, DEFAULT_LOGGER_LEVEL
 from page_util import is_url_hardcoded, is_page_to_be_skipped, sanitize_url_link, is_page_internal
 from util import decode_to_unicode, obtain_domain_with_subdomain_for_page
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(DEFAULT_LOGGER_LEVEL)
 logger.addHandler(logging.FileHandler('page.log', mode='w'))
 
 HEADER_DICT = {
