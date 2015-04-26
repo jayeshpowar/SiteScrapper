@@ -92,12 +92,13 @@ def print_pages_with_hardcoded_links(page_set, file_name):
                     __write_line_to_file(output_file, hard_coded_page)
 
 
-def __write_line_to_file(output_file, page=None, line_to_write=None, print_parents=False):
+def __write_line_to_file(output_file, page=None, line_to_write=None, print_parents=False,
+                         enable_markers_for_debugging=False):
     try:
         line = page.encoded_url if not line_to_write and page else line_to_write
         # Needed for making the links searchable in the entire list.
-        if "debug" in output_file.name:
-            output_file.write("{}\n".format(line))
+        if enable_markers_for_debugging:
+            output_file.write("*{}*\n".format(line))
         else:
             output_file.write("{}\n".format(line))
         if page:
