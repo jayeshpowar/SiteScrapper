@@ -1,6 +1,7 @@
 import logging
 
 from lxml import html
+from tldextract import extract
 from tornado import gen
 from tornado.gen import Return
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError
@@ -130,12 +131,20 @@ class Page:
 
     def __eq__(self, other):
         url = self.url
+        url = url.replace("https", "http")
         url = url[:-1] if url.endswith('/') else url
 
         other_url = other.url
+        other_url = other_url.replace("https", "http")
         other_url = other_url[:-1] if other_url.endswith('/') else other_url
 
-        return url == other_url
+        link_info = extract(url)
+        other_link_info = extract(other_url)
+
+        return (link_info.domain == other_link_info.domain and
+                link_info.suffix == other_link_info.suffix) and \
+               ((link_info.subdomain == '' or other_link_info.subdomain == '') or
+                (link_info.subdomain == other_link_info.subdomain))
 
     def __str__(self):
         return "Url: {}," \

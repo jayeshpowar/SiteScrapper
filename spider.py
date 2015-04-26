@@ -142,7 +142,8 @@ class Spider:
 
         logger.info("\nTotal pages visited >> : {}\n".format(len(self.inventory.visited_pages)))
         print_pages_to_file("all_internal_pages.txt", False, self.inventory.visited_pages)
-        print_pages_to_file("all_external_pages.txt", True, self.inventory.visited_pages,  print_parents=True)
+        print_pages_to_file("debug_internal_pages.txt", False, self.inventory.visited_pages, print_parents=True)
+        print_pages_to_file("all_external_pages.txt", True, self.inventory.visited_pages, print_parents=True)
 
 
 def process_parameters():

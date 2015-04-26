@@ -95,7 +95,11 @@ def print_pages_with_hardcoded_links(page_set, file_name):
 def __write_line_to_file(output_file, page=None, line_to_write=None, print_parents=False):
     try:
         line = page.encoded_url if not line_to_write and page else line_to_write
-        output_file.write("{}\n".format(line))
+        # Needed for making the links searchable in the entire list.
+        if "debug" in output_file.name:
+            output_file.write("{}\n".format(line))
+        else:
+            output_file.write("{}\n".format(line))
         if page:
             if print_parents and page.parents:
                 output_file.write("Referenced By :\n")
