@@ -78,7 +78,7 @@ def get_proper_data_from_stream(strieamed_line):
         return None
 
 
-def detect_js_and_resource_issues(file_name):
+def detect_js_and_resource_issues(file_name, output_file_name):
     try:
         with open(file_name) as f:
             content = f.readlines()
@@ -105,7 +105,7 @@ def detect_js_and_resource_issues(file_name):
         pool = multiprocessing.Pool(processes=pool_size)
         result = pool.map(invoke_url_in_browser, sorted(file_list))
 
-        with open("js_and_broken_resources.txt", 'w') as output_file:
+        with open(output_file_name, 'w') as output_file:
             for resource_dict in result:
                 for parent, resource in resource_dict.iteritems():
                     # print('{}\nErrors : \n{}\nBroken-Resources : \n{}'.format(parent, "\n".join(resource.error), "\n".join(resource.resource_issues)))

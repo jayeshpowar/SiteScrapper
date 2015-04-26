@@ -1,17 +1,18 @@
 import logging
 
 from lxml import html
+from tldextract import extract
 from tornado import gen
 from tornado.gen import Return
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError
 
-from config import PAGE_TIMEOUT, DOMAINS_TO_BE_SKIPPED
+from config import PAGE_TIMEOUT, DOMAINS_TO_BE_SKIPPED, DEFAULT_LOGGER_LEVEL
 from page_util import is_url_hardcoded, is_page_to_be_skipped, sanitize_url_link, is_page_internal
 from util import decode_to_unicode, obtain_domain_with_subdomain_for_page
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(DEFAULT_LOGGER_LEVEL)
 logger.addHandler(logging.FileHandler('page.log', mode='w'))
 
 HEADER_DICT = {
@@ -130,12 +131,20 @@ class Page:
 
     def __eq__(self, other):
         url = self.url
+        url = url.replace("https", "http")
         url = url[:-1] if url.endswith('/') else url
 
         other_url = other.url
+        other_url = other_url.replace("https", "http")
         other_url = other_url[:-1] if other_url.endswith('/') else other_url
 
-        return url == other_url
+        link_info = extract(url)
+        other_link_info = extract(other_url)
+
+        return (link_info.domain == other_link_info.domain and
+                link_info.suffix == other_link_info.suffix) and \
+               ((link_info.subdomain == '' or other_link_info.subdomain == '') or
+                (link_info.subdomain == other_link_info.subdomain))
 
     def __str__(self):
         return "Url: {}," \

@@ -1,21 +1,24 @@
 import argparse
 import logging
 from datetime import timedelta
+import sys
+from tldextract import tldextract
 
 from tornado import gen
 from tornado.ioloop import IOLoop
 from toro import BoundedSemaphore, JoinableQueue
 
-from config import START_URL, MAX_CONCURRENT_REQUESTS_PER_SERVER
+from config import START_URL, MAX_CONCURRENT_REQUESTS_PER_SERVER, DEFAULT_LOGGER_LEVEL
 from inventory_queue import InventoryQueue
 from page_util import is_page_to_be_skipped
-from util import extract_domain, print_pages_to_file, print_pages_with_errors, print_pages_with_hardcoded_links
+from resource_issue_detector import detect_js_and_resource_issues
+from util import extract_domain, print_pages_to_file, print_pages_with_errors, print_pages_with_hardcoded_links, \
+    decode_to_unicode
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(DEFAULT_LOGGER_LEVEL)
 logger.addHandler(logging.FileHandler('spider.log', mode='w'))
-
 
 
 class Spider:
@@ -38,9 +41,7 @@ class Spider:
             if len(self.inventory.non_visited_pages) == 0 and self.semaphore.counter == 40:
                 IOLoop.current().stop()
                 self.print_stats()
-            # logger.debug("START SEM COUNTER %d " % self.semaphore.counter)
             yield self.semaphore.acquire()
-            # logger.debug("CURRENT SEM COUNTER %d " % self.semaphore.counter)
             if len(self.inventory.non_visited_pages) > 0:
                 page = self.inventory.non_visited_pages.pop()
                 logger.debug("ACQUIRED %s " % page.url)
@@ -54,8 +55,6 @@ class Spider:
                 self.inventory.non_visited_pages_queue.get()
 
             yield gen.Task(IOLoop.current().add_timeout, timedelta(seconds=0.1))
-
-            # logger.debug("ITERATION done for %s " % page.url)
 
     @gen.coroutine
     def crawl_individual_page(self, non_visited_page):
@@ -75,12 +74,8 @@ class Spider:
                     if not get_response.error:
                         logger.debug("RESPONSE FOR GET >>> %s " % non_visited_page.url)
 
-                        # TODO : Consider page set get returned instead of string url set.
-                        # child_page_links = extract_links_from_response_for_url(non_visited_page.url, get_response)
                         non_visited_page.add_child_pages(get_response)
                         self.add_non_visited_pages(non_visited_page)
-                        # self.add_non_visited_pages(non_visited_page.child_pages)
-                        # self.add_non_visited_pages(non_visited_page.external_child_pages)
 
                         self.inventory.hardcoded_pages = \
                             self.inventory.hardcoded_pages | non_visited_page.hardcoded_child_pages
@@ -141,17 +136,14 @@ class Spider:
         return None
 
     def print_stats(self):
-        # TODO : Specify parent specific external pages
-
-        # print_pages_with_errors(True, self.inventory.visited_pages, "broken_external_links.txt")
-        # print_pages_with_errors(False, self.inventory.visited_pages, "broken_internal_links.txt")
+        print_pages_with_errors(True, self.inventory.visited_pages, "broken_external_links.txt")
+        print_pages_with_errors(False, self.inventory.visited_pages, "broken_internal_links.txt")
         print_pages_with_hardcoded_links(self.inventory.visited_pages, "hardcoded_url_links.txt")
 
         logger.info("\nTotal pages visited >> : {}\n".format(len(self.inventory.visited_pages)))
         print_pages_to_file("all_internal_pages.txt", False, self.inventory.visited_pages)
-        print_pages_to_file("all_external_pages.txt", True, self.inventory.visited_pages,  print_parents=True)
-        # print_pages_to_file("experimental_in_pages.txt", False, self.inventory.visited_pages)
-        # print_pages_to_file("experimental_ex_pages.txt", True, self.inventory.visited_pages)
+        print_pages_to_file("debug_internal_pages.txt", False, self.inventory.visited_pages, print_parents=True)
+        print_pages_to_file("all_external_pages.txt", True, self.inventory.visited_pages, print_parents=True)
 
 
 def process_parameters():
@@ -167,24 +159,7 @@ def process_parameters():
 
 
 if __name__ == "__main__":
-    base_url = "http://www.appdynamics.com"
-    # base_url ="https://www.appdynamics.com/solutions/azure/how-to-guide"
-    spider = Spider(base_url)
-    # with StackContext(die_on_error):
-    spider.crawl()
-    IOLoop.instance().start()
 
-    # url ='http://appdynamics.com/blog/2010/09/01/application-virtualization-survey'
-    #
-    # link_info = extract(url)
-    # parsed_link = u"{}.{}.{}".format(link_info.subdomain, link_info.domain, link_info.suffix)
-    #
-    # for skipped_domain in DOMAINS_TO_BE_SKIPPED:
-    # if parsed_link == skipped_domain:
-    # pass
-    # pass
-
-'''
     args = process_parameters()
     base_url = decode_to_unicode(args.url)
     sitemap_url = decode_to_unicode(args.sitemap_url)
@@ -200,10 +175,9 @@ if __name__ == "__main__":
         detect_js_and_resource_issues(url_list_file, "js_and_broken_resources.txt")
         sys.exit(0)
 
-    scrapper = TornadoSpider(base_url, sitemap_url)
-    future = scrapper.initiate_crawl()
+    spider = Spider(base_url, sitemap_url)
+    spider.crawl()
     IOLoop.instance().start()
 
     if enable_js_tests:
         detect_js_and_resource_issues("all_internal_pages.txt", "js_and_broken_resources.txt")
-'''

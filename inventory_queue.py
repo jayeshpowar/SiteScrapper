@@ -26,7 +26,7 @@ class InventoryQueue:
 
         self.non_visited_pages.add(Page(start_url, None, base_domain))
         urls_from_sitemap_file = self.extract_urls_from_sitemap_url()
-        self._add_sitemap_pages_to_non_visited_list(urls_from_sitemap_file)
+        self._add_sitemap_pages_to_non_visited_list(urls_from_sitemap_file, base_domain)
 
         self.non_visited_pages_queue = JoinableQueue()
 
@@ -50,9 +50,10 @@ class InventoryQueue:
                 http_client.close()
                 return url_list
 
-    def _add_sitemap_pages_to_non_visited_list(self, urls_from_sitemap_file):
+    def _add_sitemap_pages_to_non_visited_list(self, urls_from_sitemap_file, base_domain):
         if urls_from_sitemap_file:
+            logger.debug("Adding sitemap urls")
             for url in urls_from_sitemap_file:
-                self.non_visited_pages.put(Page(url))
+                self.non_visited_pages.add(Page(url, base_domain=base_domain))
 
 
