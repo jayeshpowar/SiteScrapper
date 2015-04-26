@@ -37,7 +37,7 @@ def extract_domain(url):
 
 
 def print_pages_to_file(file_name, identify_external, page_set, filter_function=None,
-                        print_parents=False):
+                        print_parents=False, enable_markers_for_debugging=False):
     if not filter_function:
         filter_function = lambda wp: wp.external == identify_external \
                                      and wp.response_code not in ERROR_CODES \
@@ -48,7 +48,8 @@ def print_pages_to_file(file_name, identify_external, page_set, filter_function=
         print("Pages to be written %s" % str(len(list_to_print)))
         with open(file_name, 'w') as output_file:
             for page in list_to_print:
-                __write_line_to_file(output_file, page, print_parents=print_parents)
+                __write_line_to_file(output_file, page, print_parents=print_parents,
+                                     enable_markers_for_debugging=enable_markers_for_debugging)
 
 
 def print_pages_with_errors(is_external_page, page_set, file_name):
