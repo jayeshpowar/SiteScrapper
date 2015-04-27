@@ -126,8 +126,16 @@ class Page:
 
     def __hash__(self):
         url = self.url
+        url = url.replace("https", "http")
         url = url[:-1] if url.endswith('/') else url
-        return hash(url.replace("https", 'http'))
+
+        link_info = extract(url)
+        if not link_info.subdomain:
+            url = url.replace('://', '://www.')
+
+        hash_value = hash(url)
+
+        return hash_value
 
     def __eq__(self, other):
         url = self.url
@@ -143,7 +151,8 @@ class Page:
 
         return (link_info.domain == other_link_info.domain and
                 link_info.suffix == other_link_info.suffix) and \
-               ((link_info.subdomain == '' or other_link_info.subdomain == '') or
+               ((link_info.subdomain == '' and other_link_info.subdomain == 'www') or
+               (link_info.subdomain == 'www' and other_link_info.subdomain == '') or
                 (link_info.subdomain == other_link_info.subdomain))
 
     def __str__(self):
