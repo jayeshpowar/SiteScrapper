@@ -133,6 +133,9 @@ class Page:
         if not link_info.subdomain:
             url = url.replace('://', '://www.')
 
+        if link_info.subdomain == 'www-origin':
+            url = url.replace('://www-origin', '://www')
+
         hash_value = hash(url)
 
         return hash_value
@@ -151,8 +154,8 @@ class Page:
 
         return (link_info.domain == other_link_info.domain and
                 link_info.suffix == other_link_info.suffix) and \
-               ((link_info.subdomain == '' and other_link_info.subdomain == 'www') or
-               (link_info.subdomain == 'www' and other_link_info.subdomain == '') or
+               ((link_info.subdomain == '' and other_link_info.subdomain in ['www', 'www-origin']) or
+               (link_info.subdomain in ['www', 'www-origin'] and other_link_info.subdomain == '') or
                 (link_info.subdomain == other_link_info.subdomain))
 
     def __str__(self):
