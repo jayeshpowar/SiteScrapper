@@ -27,7 +27,17 @@ class Page:
         self.base_domain = base_domain
         self.content_type = ''
 
-        self.url = url
+        link_info = extract(url)
+        if link_info.subdomain == '':
+            revised_url = url.replace('://', '://www.')
+            self.url = revised_url
+        elif link_info.subdomain == 'www-origin':
+            revised_url = url.replace(link_info.subdomain, 'www')
+            self.url = revised_url
+        else:
+            revised_url = url
+
+        self.url = revised_url
         self.encoded_url = decode_to_unicode(self.url)
         self.parent_page = parent_page
 
