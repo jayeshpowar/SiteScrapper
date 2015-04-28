@@ -154,8 +154,8 @@ class Page:
 
         return (link_info.domain == other_link_info.domain and
                 link_info.suffix == other_link_info.suffix) and \
-               ((link_info.subdomain == '' and other_link_info.subdomain in ['www', 'www-origin']) or
-               (link_info.subdomain in ['www', 'www-origin'] and other_link_info.subdomain == '') or
+               ((link_info.subdomain in ['www', 'www-origin', ''] and
+                 other_link_info.subdomain in ['www', 'www-origin', '']) or
                 (link_info.subdomain == other_link_info.subdomain))
 
     def __str__(self):
