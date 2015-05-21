@@ -18,7 +18,7 @@ To scrape the site using the twisted version of the library execute :
 
 for javascript errors detection ( takes too much time )
 
-**python tornado_spider.py --jserrors --url='http://www.example.com'**
+**python spider.py --jserrors --url='http://www.example.com'**
 
 
 The twisted version spawns quite large number of connections on the server
