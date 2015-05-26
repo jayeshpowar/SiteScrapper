@@ -28,16 +28,18 @@ class Page:
         self.content_type = ''
 
         link_info = extract(url)
-        if link_info.subdomain == '':
-            revised_url = url.replace('://', '://www.')
-            self.url = revised_url
-        elif link_info.subdomain == 'www-origin':
-            revised_url = url.replace(link_info.subdomain, 'www')
-            self.url = revised_url
-        else:
-            revised_url = url
+        # if link_info.subdomain == '':
+        #     revised_url = url.replace('://', '://www.')
+        #     self.url = revised_url
+        # if '-origin' in link_info.subdomain:
+        #     revised_subdomain = link_info.subdomain.replace("-origin", "")
+        #     revised_url = url.replace(link_info.subdomain, revised_subdomain)
+        #     self.url = revised_url
+        # else:
+        #     revised_url = url
 
-        self.url = revised_url
+        # self.url = revised_url
+        self.url = url
         self.encoded_url = decode_to_unicode(self.url)
         self.parent_page = parent_page
 
@@ -136,14 +138,24 @@ class Page:
 
     def __hash__(self):
         url = self.url
+        url = url.replace("https", "http")
         url = url[:-1] if url.endswith('/') else url
 
+
+
+
+
         link_info = extract(url)
+
+        if "-origin" in link_info.subdomain:
+            revised_subdomain = link_info.subdomain.replace("-origin", "")
+            url = url.replace(link_info.subdomain, revised_subdomain)
+
         if not link_info.subdomain:
             url = url.replace('://', '://www.')
 
-        if link_info.subdomain == 'www-origin':
-            url = url.replace('://www-origin', '://www')
+        # if link_info.subdomain == 'www-origin':
+        #     url = url.replace('://www-origin', '://www')
 
         hash_value = hash(url)
 
